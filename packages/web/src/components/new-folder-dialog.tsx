@@ -1,8 +1,8 @@
-import { Dialog, DialogContent } from '@web-archive/shared/components/dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@web-archive/shared/components/dialog'
 import { Button } from '@web-archive/shared/components/button'
 import { Input } from '@web-archive/shared/components/input'
 import { useState } from 'react'
-import { DialogDescription, DialogTitle } from '@radix-ui/react-dialog'
+import { DialogDescription } from '@radix-ui/react-dialog'
 import toast from 'react-hot-toast'
 import { useRequest } from 'ahooks'
 import { useTranslation } from 'react-i18next'
@@ -40,8 +40,10 @@ function NewFolderDialog({ afterSubmit, open, setOpen }: NewFolderProps) {
   }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent>
-        <DialogTitle>{t('create-new-folder-web')}</DialogTitle>
+      <DialogContent className="shadow-elevated">
+        <DialogHeader>
+          <DialogTitle>{t('create-new-folder-web')}</DialogTitle>
+        </DialogHeader>
         <DialogDescription></DialogDescription>
         <Input
           value={name}
@@ -49,7 +51,9 @@ function NewFolderDialog({ afterSubmit, open, setOpen }: NewFolderProps) {
           onKeyDown={e => e.key === 'Enter' && handleSubmit()}
           placeholder={t('folder-name')}
         />
-        <Button onClick={handleSubmit}>{t('create-web')}</Button>
+        <DialogFooter>
+          <Button onClick={handleSubmit}>{t('create-web')}</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

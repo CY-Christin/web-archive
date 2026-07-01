@@ -36,14 +36,17 @@ function TagBadge({ tag, isSelected, onClick, onDelete, onEdit }: TagBadgeProps)
       <ContextMenuTrigger>
         <Badge
           key={tag.id}
-          className="cursor-pointer h-fit mr-[3px] select-none"
+          className={cn(
+            'cursor-pointer h-fit select-none transition-colors',
+            isSelected && 'ring-1 ring-ring/40',
+          )}
           variant={isSelected ? 'default' : 'secondary'}
           onClick={onClick}
         >
           {labelText}
         </Badge>
       </ContextMenuTrigger>
-      <ContextMenuContent className="w-48">
+      <ContextMenuContent className="w-48 shadow-elevated">
         <ContextMenuItem
           className="flex items-center space-x-2 cursor-pointer"
           onClick={onEdit}
@@ -127,7 +130,7 @@ function SidebarTagMenu({ selectedTag, setSelectedTag, selectedFolder }: Sidebar
           <SidebarMenuSub
             onContextMenu={e => e.preventDefault()}
           >
-            <div className="space-y-2">
+            <div className="flex flex-wrap gap-1.5 py-1">
               {showTagList?.map(tag => (
                 <TagBadge
                   key={tag.id}

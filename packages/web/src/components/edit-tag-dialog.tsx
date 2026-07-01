@@ -1,5 +1,5 @@
 import { Button } from '@web-archive/shared/components/button'
-import { Dialog, DialogContent, DialogTitle } from '@web-archive/shared/components/dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@web-archive/shared/components/dialog'
 import { Input } from '@web-archive/shared/components/input'
 import { isNil } from '@web-archive/shared/utils'
 import { useRequest } from 'ahooks'
@@ -63,15 +63,19 @@ function EditTagDialog({ afterSubmit, open, setOpen, editTag }: EditTagProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent>
-        <DialogTitle>{t('edit-tag')}</DialogTitle>
+      <DialogContent className="shadow-elevated">
+        <DialogHeader>
+          <DialogTitle>{t('edit-tag')}</DialogTitle>
+        </DialogHeader>
         <Input
           value={tagName}
           onChange={e => setTagName(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSubmit()}
           placeholder={t('tag-name')}
         />
-        <Button onClick={handleSubmit}>{t('update')}</Button>
+        <DialogFooter>
+          <Button onClick={handleSubmit}>{t('update')}</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

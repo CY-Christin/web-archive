@@ -40,17 +40,17 @@ function ListView({ pages, children, imgPreview, onItemClick }: ListViewProps) {
           && (
             <ScreenshotView
               screenshotId={prevScreenshotId}
-              className="max-w-xs shadow-lg rounded"
-              loadingClassName="max-w-xs shadow-lg rounded w-xs h-40"
+              className="max-w-xs shadow-elevated rounded-lg border border-border bg-card overflow-hidden"
+              loadingClassName="max-w-xs shadow-elevated rounded-lg border border-border bg-card w-xs h-40"
             />
           )
         }
       </div>
       <TableBody>
         {pages?.map(page => (
-          <TableRow key={page.id} className="cursor-pointer z-10" onClick={e => handleClickPage(page, e)} onMouseEnter={e => handleHoverPage(e, page)} onMouseLeave={handleLeavePage}>
-            <TableCell className="line-clamp-3">{page.title}</TableCell>
-            <TableCell>{page.createdAt.toLocaleString()}</TableCell>
+          <TableRow key={page.id} className="cursor-pointer z-10 hover:bg-accent transition-colors" onClick={e => handleClickPage(page, e)} onMouseEnter={e => handleHoverPage(e, page)} onMouseLeave={handleLeavePage}>
+            <TableCell className="line-clamp-3 font-medium text-foreground">{page.title}</TableCell>
+            <TableCell className="text-muted-foreground whitespace-nowrap">{page.createdAt.toLocaleString()}</TableCell>
             {children && (
               <TableCell>
                 {children(page)}

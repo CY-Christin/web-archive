@@ -1,4 +1,3 @@
-const { fontFamily } = require('tailwindcss/defaultTheme')
 const typography = require('@tailwindcss/typography')
 
 /** @type {import('tailwindcss').Config} */
@@ -55,7 +54,12 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['var(--font-sans)', ...fontFamily.sans],
+        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+      },
+      boxShadow: {
+        'card': '0 1px 2px 0 rgb(17 12 6 / 0.04), 0 1px 3px 0 rgb(17 12 6 / 0.03)',
+        'card-hover': '0 2px 4px -1px rgb(17 12 6 / 0.05), 0 6px 16px -3px rgb(17 12 6 / 0.06)',
+        'elevated': '0 4px 8px -2px rgb(17 12 6 / 0.06), 0 16px 32px -6px rgb(17 12 6 / 0.10)',
       },
       keyframes: {
         'accordion-down': {

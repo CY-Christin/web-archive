@@ -2,9 +2,9 @@ import React from 'react'
 
 function Loading() {
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center">
-      <div className="m-b-xl h-8 w-8 animate-spin border-4 border-t-transparent rounded-full border-primary"></div>
-      <div>Loading...</div>
+    <div className="w-full h-full flex flex-col items-center justify-center gap-3">
+      <div className="h-8 w-8 animate-spin border-4 border-t-transparent rounded-full border-primary"></div>
+      <div className="text-sm text-muted-foreground">Loading...</div>
     </div>
   )
 }

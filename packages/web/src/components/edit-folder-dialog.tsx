@@ -1,5 +1,5 @@
 import { Button } from '@web-archive/shared/components/button'
-import { Dialog, DialogContent, DialogTitle } from '@web-archive/shared/components/dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@web-archive/shared/components/dialog'
 import { Input } from '@web-archive/shared/components/input'
 import { isNil } from '@web-archive/shared/utils'
 import { useRequest } from 'ahooks'
@@ -57,15 +57,19 @@ function EditFolderDialog({ afterSubmit, open, setOpen, editFolder }: EditFolder
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent>
-        <DialogTitle>{t('edit-folder')}</DialogTitle>
+      <DialogContent className="shadow-elevated">
+        <DialogHeader>
+          <DialogTitle>{t('edit-folder')}</DialogTitle>
+        </DialogHeader>
         <Input
           value={folderName}
           onChange={e => setFolderName(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSubmit()}
           placeholder={t('folder-name')}
         />
-        <Button onClick={handleSubmit}>{t('update')}</Button>
+        <DialogFooter>
+          <Button onClick={handleSubmit}>{t('update')}</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

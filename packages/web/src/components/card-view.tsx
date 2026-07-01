@@ -28,9 +28,9 @@ function CardView({ pages, onPageDelete }: { pages?: Page[], onPageDelete: (page
   }, [pages, columnCount, onPageDelete])
 
   return (
-    <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+    <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
       {reorganizedPages.map((columnPages, idx) => (
-        <div key={idx} className="flex flex-col gap-4">
+        <div key={idx} className="flex flex-col gap-6">
           {columnPages}
         </div>
       ))}

@@ -69,7 +69,7 @@ function Comp({ page, onPageDelete }: { page: Page, onPageDelete?: (page: Page) 
 
       <Card
         key={page.id}
-        className="cursor-pointer hover:shadow-lg transition-shadow flex flex-col relative group overflow-hidden"
+        className="cursor-pointer shadow-card hover:shadow-card-hover transition-shadow duration-200 flex flex-col relative group overflow-hidden"
       >
         <Link to={redirectTo} params={{ slug: page.id.toString() }}>
           <CardHeader>
@@ -85,11 +85,11 @@ function Comp({ page, onPageDelete }: { page: Page, onPageDelete?: (page: Page) 
               loadingClassName="w-full h-48"
             >
             </ScreenshotView>
-            <p className="h-auto text-sm text-gray-600 dark:text-gray-400 line-clamp-3">{page.pageDesc}</p>
+            <p className="h-auto text-sm text-muted-foreground line-clamp-3">{page.pageDesc}</p>
           </CardContent>
         </Link>
 
-        <CardFooter className="flex space-x-2 justify-end w-full backdrop-blur-sm py-4 absolute bottom-0 group-hover:opacity-100 sm:opacity-0 transition-opacity">
+        <CardFooter className="flex gap-2 justify-end w-full inset-x-0 border-t border-border bg-card/80 backdrop-blur-md px-4 py-3 absolute bottom-0 group-hover:opacity-100 sm:opacity-0 transition-opacity">
           {
             !isShowcased && (
               <TooltipProvider delayDuration={200}>

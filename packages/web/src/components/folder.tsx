@@ -1,6 +1,7 @@
 import { Folder as FolderIcon, FolderOpen as FolderOpenIcon, Pencil, Trash } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@web-archive/shared/components/context-menu'
+import { cn } from '@web-archive/shared/utils'
 import { useTranslation } from 'react-i18next'
 
 interface FolderProps {
@@ -23,17 +24,24 @@ function Folder({ id, name, isOpen, onClick, onDelete, onEdit }: FolderProps) {
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger className={`cursor-pointer hover:bg-accent w-full rounded-md ${isOpen || isHover ? 'bg-accent' : ''}`}>
-        <li onClick={handleClick} ref={folderRef} className="p-2 px-1 flex flex-col justify-center ">
-          <div className="flex items-center ">
-            {isOpen ? <FolderOpenIcon className="w-4 h-4 mr-2 ml-2" /> : <FolderIcon className="w-4 h-4 mr-2 ml-2" />}
+      <ContextMenuTrigger
+        className={cn(
+          'w-full cursor-pointer rounded-md transition-colors',
+          isOpen || isHover
+            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+            : 'hover:bg-sidebar-accent/60',
+        )}
+      >
+        <li onClick={handleClick} ref={folderRef} className="flex flex-col justify-center px-2 py-1.5">
+          <div className="flex items-center">
+            {isOpen ? <FolderOpenIcon className="w-4 h-4 mr-2" /> : <FolderIcon className="w-4 h-4 mr-2" />}
             <div className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm">
               {name}
             </div>
           </div>
         </li>
       </ContextMenuTrigger>
-      <ContextMenuContent className="w-48">
+      <ContextMenuContent className="w-48 shadow-elevated">
         <ContextMenuItem className="flex items-center space-x-2 cursor-pointer" onClick={() => onEdit?.(id)}>
           <Pencil size={12} />
           <div>{t('edit')}</div>

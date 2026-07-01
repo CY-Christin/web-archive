@@ -21,10 +21,10 @@ function SearchBar({ className, keyword, setKeyword, handleSearch }: SearchBarPr
     <div className={`${className ?? ''} flex items-center m-2 ${match ? 'justify-between' : 'justify-end'}`}>
       {match && <ViewToggle />}
       <div className="flex items-center space-x-2">
-        <div className="flex items-center border rounded-md px-3" cmdk-input-wrapper="">
-          <Search className="h-4 w-4 shrink-0 opacity-50" />
+        <div className="flex items-center gap-2 rounded-md border border-input bg-card px-3 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background" cmdk-input-wrapper="">
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <Input
-            className="border-none outline-none focus-visible:ring-offset-0 focus-visible:ring-ring w-52"
+            className="w-52 border-none bg-transparent px-0 outline-none focus-visible:ring-offset-0 focus-visible:ring-ring"
             placeholder={t('search-placeholder')}
             value={keyword}
             showRing={false}

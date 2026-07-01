@@ -41,9 +41,9 @@ function Component({ selectedTag, setSelectedTag }: SidebarProps) {
       <SettingDialog open={settingDialogOpen} setOpen={setSettingDialogOpen} />
 
       <SidebarHeader>
-        <div className="flex justify-center items-center">
+        <div className="flex items-center justify-center gap-2 px-2 py-1">
           <img src="/static/logo.svg" className="w-10 scale-x-[-1]" />
-          <h2 className="mt-2 pr-4 pl-2 text-lg font-semibold tracking-tight leading-5">
+          <h2 className="text-lg font-semibold tracking-tight leading-5 text-foreground">
             Web
             <br />
             {' '}

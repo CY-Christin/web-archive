@@ -102,7 +102,7 @@ function Comp({ open, onOpenChange, pageId }: CardEditDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTitle></DialogTitle>
       <DialogDescription></DialogDescription>
-      <DialogContent>
+      <DialogContent className="shadow-elevated">
         <LoadingWrapper loading={loading || foldersLoading}>
           <Form {...form}>
             <form

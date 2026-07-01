@@ -98,7 +98,7 @@ function SidebarFolderMenu({ openedFolder, setOpenedFolder, className }: Sidebar
               ? (
                 <>
                   {Array.from({ length: 3 }).map((_, index) => (
-                    <Skeleton key={index} className="w-full h-10" />
+                    <Skeleton key={index} className="w-full h-8 rounded-md" />
                   ))}
                 </>
                 )
@@ -122,7 +122,7 @@ function SidebarFolderMenu({ openedFolder, setOpenedFolder, className }: Sidebar
                   ))
                 )}
             <SidebarMenuItem>
-              <Button variant="ghost" className="w-full justify-start" onClick={() => setNewFolderDialogOpen(true)}>
+              <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent" onClick={() => setNewFolderDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 {t('add-folder')}
               </Button>

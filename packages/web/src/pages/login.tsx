@@ -48,14 +48,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
+    <div className="flex items-center justify-center min-h-screen bg-background px-4">
       <Toaster
         position="top-center"
         reverseOrder={false}
       />
-      <Card className="w-[450px]">
-        <CardHeader>
-          <CardTitle>Web Archive</CardTitle>
+      <Card className="w-full max-w-[420px] shadow-card">
+        <CardHeader className="space-y-2 pb-4">
+          <CardTitle className="text-2xl tracking-tight">Web Archive</CardTitle>
           <CardDescription>{t('please-enter-your-key-to-login')}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -72,7 +72,7 @@ export default function LoginPage() {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? <Eye /> : <EyeOff />}
