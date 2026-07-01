@@ -93,6 +93,8 @@
   "please-enter-a-valid-api-url": "Please enter a valid API URL",
   "please-enter-a-valid-base-url": "Please enter a valid Base URL",
   "base-url": "Base URL",
+  "date-range": "Date range",
+  "clear": "Clear",
   "aiTag-provider-preset": "Provider Preset",
   "aiTag-provider-custom": "Custom",
   "aiTag-provider-preset-desc": "Pick a preset to fill in the Base URL, or choose Custom for any OpenAI-compatible endpoint.",

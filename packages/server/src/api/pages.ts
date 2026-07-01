@@ -4,9 +4,10 @@ import { isNil, isNotNil, isNumberString } from '@web-archive/shared/utils'
 import { z } from 'zod'
 import type { HonoTypeUserInformation } from '~/constants/binding'
 import result from '~/utils/result'
-import { clearDeletedPage, deletePageById, getPageById, insertPage, queryAllPageIds, queryDeletedPage, queryPage, queryPageByUrl, queryRecentSavePage, restorePage, selectPageTotalCount, updatePage } from '~/model/page'
+import { clearDeletedPage, deletePageById, getPageById, insertPage, queryAllPageIds, queryDeletedPage, queryPage, queryPageByUrl, queryPagesForReindex, queryRecentSavePage, restorePage, selectPageTotalCount, updatePage, upsertPageFts } from '~/model/page'
 import { getFolderById, restoreFolder } from '~/model/folder'
 import { getFileFromBucket, saveFileToBucket } from '~/utils/file'
+import { htmlToText } from '~/utils/htmlToText'
 import { updateShowcase } from '~/model/showcase'
 import { updateBindPageByTagName } from '~/model/tag'
 
@@ -82,6 +83,16 @@ app.post(
       isShowcased,
     })
     if (isNotNil(insertId)) {
+      // Index the page for full-text search (best-effort; a failure here must not
+      // fail the upload — the page can be re-indexed later via /reindex).
+      try {
+        const html = typeof pageFile === 'string' ? pageFile : await (pageFile as File).text()
+        await upsertPageFts(c.env.DB, { pageId: insertId, title, pageDesc, content: htmlToText(html) })
+      }
+      catch (error) {
+        console.error('Failed to index page for full-text search', error)
+      }
+
       const updateTagResult = await updateBindPageByTagName(c.env.DB, bindTags.map(tagName => ({ tagName, pageIds: [insertId] })), [])
       if (updateTagResult)
         return c.json(result.success(null))
@@ -115,17 +126,19 @@ app.post(
       pageNumber: isNotNil(value.pageNumber) ? Number(value.pageNumber) : undefined,
       pageSize: isNotNil(value.pageSize) ? Number(value.pageSize) : undefined,
       keyword: value.keyword,
+      startAt: isNotNil(value.startAt) ? String(value.startAt) : undefined,
+      endAt: isNotNil(value.endAt) ? String(value.endAt) : undefined,
     }
   }),
   async (c) => {
-    const { folderId, pageNumber, pageSize, keyword, tagId } = c.req.valid('json')
+    const { folderId, pageNumber, pageSize, keyword, tagId, startAt, endAt } = c.req.valid('json')
 
     const [pages, total] = await Promise.all([
       queryPage(
         c.env.DB,
-        { folderId, pageNumber, pageSize, keyword, tagId },
+        { folderId, pageNumber, pageSize, keyword, tagId, startAt, endAt },
       ),
-      selectPageTotalCount(c.env.DB, { folderId, keyword, tagId }),
+      selectPageTotalCount(c.env.DB, { folderId, keyword, tagId, startAt, endAt }),
     ])
     return c.json(result.success({ list: pages, total }))
   },
@@ -152,6 +165,56 @@ app.post(
     const pages = await queryAllPageIds(c.env.DB, folderId)
 
     return c.json(result.success(pages))
+  },
+)
+
+// Rebuild the full-text index from R2 for existing pages, in bounded batches.
+// Call repeatedly, passing back the returned `cursor`, until `done` is true.
+app.post(
+  '/reindex',
+  validator('json', (value, c) => {
+    const schema = z.object({
+      cursor: z.number().int().nonnegative().default(0),
+      limit: z.number().int().positive().max(50).default(10),
+    })
+    const parsed = schema.safeParse(value ?? {})
+    if (!parsed.success) {
+      return c.json(result.error(400, parsed.error.errors[0]?.message ?? 'Invalid request'))
+    }
+    return parsed.data
+  }),
+  async (c) => {
+    const { cursor, limit } = c.req.valid('json')
+    const pages = await queryPagesForReindex(c.env.DB, { cursor, limit })
+
+    let indexed = 0
+    let failed = 0
+    let lastId = cursor
+    for (const page of pages) {
+      lastId = page.id
+      try {
+        const object = await c.env.BUCKET.get(page.contentUrl)
+        const html = object ? await object.text() : ''
+        await upsertPageFts(c.env.DB, {
+          pageId: page.id,
+          title: page.title,
+          pageDesc: page.pageDesc,
+          content: htmlToText(html),
+        })
+        indexed++
+      }
+      catch (error) {
+        console.error(`Failed to reindex page ${page.id}`, error)
+        failed++
+      }
+    }
+
+    return c.json(result.success({
+      indexed,
+      failed,
+      cursor: lastId,
+      done: pages.length < limit,
+    }))
   },
 )
 

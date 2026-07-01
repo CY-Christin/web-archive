@@ -26,6 +26,8 @@ function queryPage(body: {
   pageSize: number
   keyword: string
   tagId: number | null
+  startAt?: string
+  endAt?: string
 }): Promise<{
   list: Page[]
   total: number

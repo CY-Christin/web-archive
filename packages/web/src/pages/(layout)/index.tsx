@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Page } from '@web-archive/shared/types'
 import { ScrollArea } from '@web-archive/shared/components/scroll-area'
 import { useOutletContext } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { isNil, isNotNil } from '@web-archive/shared/utils'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import PageDataPieCard from '~/components/page-data-pie-card'
@@ -87,8 +88,11 @@ function RecentSavePageView() {
 }
 
 function SearchiPageView() {
+  const { t } = useTranslation()
   const scrollRef = useRef<Ref>(null)
   const { keyword, searchTrigger, selectedTag } = useOutletContext<{ keyword: string, searchTrigger: boolean, selectedTag: number | null, setKeyword: (keyword: string) => void, handleSearch: () => void }>()
+  const [startAt, setStartAt] = useState('')
+  const [endAt, setEndAt] = useState('')
   const PAGE_SIZE = 14
   const { data: pagesData, loading: pagesLoading, mutate: setPageData, loadingMore, reload } = useInfiniteScroll(
     async (d) => {
@@ -98,6 +102,8 @@ function SearchiPageView() {
         pageSize: PAGE_SIZE,
         keyword,
         tagId: selectedTag,
+        startAt: startAt || undefined,
+        endAt: endAt || undefined,
       })
       return {
         list: res.list ?? [],
@@ -116,7 +122,7 @@ function SearchiPageView() {
   )
   useEffect(() => {
     reload()
-  }, [searchTrigger])
+  }, [searchTrigger, startAt, endAt])
 
   useWhyDidYouUpdate('SearchiPageView', { pagesData, pagesLoading, loadingMore, keyword, selectedTag })
 
@@ -126,8 +132,28 @@ function SearchiPageView() {
       setPageData({ list: pagesData?.list.filter(page => page.id !== data?.id) ?? [] })
     },
   })
+  const dateInputClass = 'h-8 rounded-md border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+  const clearDateRange = () => {
+    setStartAt('')
+    setEndAt('')
+  }
   return (
     <ScrollArea ref={scrollRef} className="p-4 overflow-auto  h-[calc(100vh-58px)]">
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <span>{t('date-range')}</span>
+        <input type="date" value={startAt} max={endAt || undefined} onChange={e => setStartAt(e.target.value)} className={dateInputClass} />
+        <span>-</span>
+        <input type="date" value={endAt} min={startAt || undefined} onChange={e => setEndAt(e.target.value)} className={dateInputClass} />
+        {(startAt || endAt) && (
+          <button
+            type="button"
+            onClick={clearDateRange}
+            className="h-8 rounded-md px-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            {t('clear')}
+          </button>
+        )}
+      </div>
       <LoadingWrapper loading={pagesLoading || (!pagesData)}>
         <div className="h-full">
           <CardView pages={pagesData?.list} onPageDelete={handleDeletePage} />
