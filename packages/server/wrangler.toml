@@ -1,6 +1,6 @@
 name = "web-archive"
 pages_build_output_dir = "../../dist/service"
-compatibility_flags = [ "nodejs_compat_v2" ]
+compatibility_flags = [ "nodejs_compat" ]
 compatibility_date = "2024-10-21"
 
 [[r2_buckets]]
