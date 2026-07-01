@@ -1,20 +1,18 @@
 import { Button } from '@web-archive/shared/components/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@web-archive/shared/components/select'
 import { useRequest } from 'ahooks'
 import { ArrowLeft, Trash } from 'lucide-react'
-import { useContext, useEffect } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import IframePageContent from '~/components/iframe-page-content'
 import LoadingWrapper from '~/components/loading-wrapper'
 import ReadabilityPageContent from '~/components/readability-page-content'
-import { deletePage, getPageDetail } from '~/data/page'
+import { deletePage, getPageDetail, getPageVersions } from '~/data/page'
 import { useObjectURL } from '~/hooks/useObjectUrl'
 import { useNavigate, useParams } from '~/router'
 import AppContext from '~/store/app'
 
-async function getPageContent(pageId: string | undefined) {
-  if (!pageId)
-    return ''
-  const url = `/api/pages/content?pageId=${pageId}`
+async function fetchHtmlWithToken(url: string) {
   const res = await fetch(url, {
     method: 'GET',
     headers: {
@@ -24,6 +22,19 @@ async function getPageContent(pageId: string | undefined) {
   })
   return await res.text()
 }
+
+async function getPageContent(pageId: string | undefined) {
+  if (!pageId)
+    return ''
+  return fetchHtmlWithToken(`/api/pages/content?pageId=${pageId}`)
+}
+
+async function getVersionContent(versionId: number) {
+  return fetchHtmlWithToken(`/api/pages/version_content?versionId=${versionId}`)
+}
+
+// 'latest' shows the page's current content; a number shows an archived snapshot.
+const LATEST = 'latest'
 
 function ArchivePage() {
   const { t } = useTranslation()
@@ -55,16 +66,25 @@ function ArchivePage() {
       window.history.back()
   }
 
+  // Historical snapshots (empty when the page has only ever been saved once).
+  const { data: versions } = useRequest(
+    () => getPageVersions(Number(slug)),
+    { ready: !!slug },
+  )
+  const [selectedVersion, setSelectedVersion] = useState<string>(LATEST)
+
   const { objectURL: pageContentUrl, setObject } = useObjectURL(null)
   const { data: pageHtml, loading: pageLoading } = useRequest(
     async () => {
-      const pageHtml = await getPageContent(slug)
-      return pageHtml
+      if (selectedVersion === LATEST)
+        return await getPageContent(slug)
+      return await getVersionContent(Number(selectedVersion))
     },
     {
       onSuccess: (pageHtml) => {
         setObject(pageHtml)
       },
+      refreshDeps: [selectedVersion],
     },
   )
 
@@ -92,6 +112,21 @@ function ArchivePage() {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex space-x-2">
+          {versions && versions.length > 0 && (
+            <Select value={selectedVersion} onValueChange={setSelectedVersion}>
+              <SelectTrigger className="h-9 w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={LATEST}>{t('latest-version')}</SelectItem>
+                {versions.map(version => (
+                  <SelectItem key={version.id} value={String(version.id)}>
+                    {version.createdAt}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <a
             href={pageContentUrl ?? ''}
             download={`${pageDetail?.title ?? 'Download'}.html`}

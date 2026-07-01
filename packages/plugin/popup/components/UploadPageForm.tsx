@@ -10,6 +10,7 @@ import { useRequest } from 'ahooks'
 import { isNil } from '@web-archive/shared/utils'
 import toast from 'react-hot-toast'
 import { Switch } from '@web-archive/shared/components/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@web-archive/shared/components/select'
 import { useTranslation } from 'react-i18next'
 import FolderSelectWithCache, { getLastChooseFolderId } from './FolderSelectWithCache'
 import TagInputWithCache from './TagInputWithCache'
@@ -80,6 +81,23 @@ function UploadPageForm({ setActivePage }: UploadPageFormProps) {
     }))
   }
 
+  // If this URL is already archived, let the user choose how a re-save behaves.
+  const [existingPage, setExistingPage] = useState<{ id: number, title: string, createdAt: string } | null>(null)
+  const [saveMode, setSaveMode] = useState<'overwrite' | 'version' | 'new'>('version')
+
+  const { run: checkExisting } = useRequest(
+    async (pageUrl: string) => {
+      const { pages } = await sendMessage('query-by-url', { pageUrl })
+      return pages
+    },
+    {
+      manual: true,
+      onSuccess: (pages) => {
+        setExistingPage(pages && pages.length > 0 ? pages[0] : null)
+      },
+    },
+  )
+
   const { loading: isInitPageData } = useRequest(
     scrapePageData,
     {
@@ -88,6 +106,8 @@ function UploadPageForm({ setActivePage }: UploadPageFormProps) {
           ...uploadPageData,
           ...data,
         })
+        if (data.href)
+          checkExisting(data.href)
       },
     },
   )
@@ -119,6 +139,8 @@ function UploadPageForm({ setActivePage }: UploadPageFormProps) {
         screenshot: uploadPageData.screenshot,
         bindTags: uploadPageData.bindTags,
         isShowcased: uploadPageData.isShowcased,
+        saveMode: existingPage ? saveMode : 'new',
+        targetPageId: existingPage?.id,
       },
     })
     toast.success(t('add-save-page-task-success'))
@@ -204,6 +226,24 @@ function UploadPageForm({ setActivePage }: UploadPageFormProps) {
         >
         </FolderSelectWithCache>
       </div>
+
+      {existingPage && (
+        <div className="flex flex-col space-y-2 rounded-md border border-border bg-muted/50 p-3">
+          <Label className="text-muted-foreground">
+            {t('already-archived')}
+          </Label>
+          <Select value={saveMode} onValueChange={value => setSaveMode(value as 'overwrite' | 'version' | 'new')}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="version">{t('save-mode-version')}</SelectItem>
+              <SelectItem value="overwrite">{t('save-mode-overwrite')}</SelectItem>
+              <SelectItem value="new">{t('save-mode-new')}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="flex justify-between">
         <Button

@@ -116,6 +116,26 @@ function queryAllPageIds(folderId: number): Promise<number[]> {
   })
 }
 
+interface PageVersion {
+  id: number
+  pageId: number
+  title: string
+  pageDesc: string
+  screenshotId: string | null
+  createdAt: string
+}
+
+function getPageVersions(pageId: number): Promise<PageVersion[]> {
+  return fetcher<PageVersion[]>('/pages/versions', {
+    method: 'GET',
+    query: {
+      pageId: pageId.toString(),
+    },
+  })
+}
+
+export type { PageVersion }
+
 export {
   getPageDetail,
   deletePage,
@@ -128,4 +148,5 @@ export {
   getPageScreenshot,
   getRecentSavePage,
   queryAllPageIds,
+  getPageVersions,
 }

@@ -54,5 +54,9 @@
   "save-page-not-available": "Save Page (Not Available)",
   "language": "Language:",
   "loading-archived-list": "Loading Archived List",
-  "no-archived-pages": "No Archived Pages"
+  "no-archived-pages": "No Archived Pages",
+  "already-archived": "This URL is already archived. When saved:",
+  "save-mode-version": "Save as new version",
+  "save-mode-overwrite": "Overwrite existing",
+  "save-mode-new": "Save as new entry"
 }

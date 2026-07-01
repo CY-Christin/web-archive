@@ -54,5 +54,9 @@
   "save-page-not-available": "保存页面（不可用）",
   "language": "语言: ",
   "loading-archived-list": "加载已存档列表中",
-  "no-archived-pages": "没有存档页面"
+  "no-archived-pages": "没有存档页面",
+  "already-archived": "该网址已存档，再次保存时：",
+  "save-mode-version": "存为新版本",
+  "save-mode-overwrite": "覆盖原有",
+  "save-mode-new": "另存为新条目"
 }

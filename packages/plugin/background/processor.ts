@@ -81,6 +81,8 @@ type CreateTaskOptions = {
     screenshot?: string
     bindTags: string[]
     isShowcased: boolean
+    saveMode?: 'new' | 'overwrite' | 'version'
+    targetPageId?: number
   }
   singleFileSetting: SingleFileSetting
 }
@@ -95,7 +97,7 @@ async function scrapePageData(singleFileSetting: SingleFileSetting, tabId: numbe
 }
 
 async function uploadPageData(pageForm: CreateTaskOptions['pageForm'] & { content: string }) {
-  const { href, title, pageDesc, folderId, screenshot, content, isShowcased } = pageForm
+  const { href, title, pageDesc, folderId, screenshot, content, isShowcased, saveMode, targetPageId } = pageForm
 
   const form = new FormData()
   form.append('title', title)
@@ -105,6 +107,11 @@ async function uploadPageData(pageForm: CreateTaskOptions['pageForm'] & { conten
   form.append('bindTags', JSON.stringify(pageForm.bindTags))
   form.append('pageFile', new Blob([content], { type: 'text/html' }))
   form.append('isShowcased', isShowcased ? '1' : '0')
+  // When re-saving an already-archived URL, tell the server how to handle it.
+  if (saveMode && saveMode !== 'new' && targetPageId != null) {
+    form.append('saveMode', saveMode)
+    form.append('targetPageId', String(targetPageId))
+  }
   if (screenshot) {
     form.append('screenshot', base64ToBlob(screenshot, 'image/webp'))
   }
@@ -145,7 +152,7 @@ async function createAndRunTask(options: CreateTaskOptions) {
     task.status = 'uploading'
     await saveTask(task)
 
-    await uploadPageData({ content, href, title, pageDesc, folderId, screenshot, bindTags, isShowcased })
+    await uploadPageData({ ...pageForm, content })
     task.status = 'done'
     task.endTimeStamp = Date.now()
     await saveTask(task)

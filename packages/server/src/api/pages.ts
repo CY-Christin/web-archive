@@ -4,9 +4,9 @@ import { isNil, isNotNil, isNumberString } from '@web-archive/shared/utils'
 import { z } from 'zod'
 import type { HonoTypeUserInformation } from '~/constants/binding'
 import result from '~/utils/result'
-import { clearDeletedPage, deletePageById, getPageById, insertPage, queryAllPageIds, queryDeletedPage, queryPage, queryPageByUrl, queryPagesForReindex, queryRecentSavePage, restorePage, selectPageTotalCount, updatePage, upsertPageFts } from '~/model/page'
+import { clearDeletedPage, deletePageById, getPageById, getPageVersionById, insertPage, insertPageVersion, queryAllPageIds, queryDeletedPage, queryPage, queryPageByUrl, queryPageVersions, queryPagesForReindex, queryRecentSavePage, restorePage, selectPageTotalCount, updatePage, updatePageContent, upsertPageFts } from '~/model/page'
 import { getFolderById, restoreFolder } from '~/model/folder'
-import { getFileFromBucket, saveFileToBucket } from '~/utils/file'
+import { getFileFromBucket, removeBucketFile, saveFileToBucket } from '~/utils/file'
 import { htmlToText } from '~/utils/htmlToText'
 import { updateShowcase } from '~/model/showcase'
 import { updateBindPageByTagName } from '~/model/tag'
@@ -49,6 +49,14 @@ app.post(
       }
     }
 
+    // saveMode controls behaviour when the URL is already archived:
+    //   'new'       -> always create a new entry (default / legacy behaviour)
+    //   'overwrite' -> replace targetPageId's content, discard the old snapshot
+    //   'version'   -> archive targetPageId's current content, then replace it
+    const saveMode = value.saveMode === 'overwrite' || value.saveMode === 'version'
+      ? value.saveMode
+      : 'new'
+
     return {
       title: value.title,
       pageDesc: value.pageDesc as string,
@@ -58,10 +66,12 @@ app.post(
       screenshot: value.screenshot,
       bindTags: JSON.parse(value.bindTags ?? '[]') as string[],
       isShowcased: Boolean(Number(value.isShowcased ?? 0)),
+      saveMode: saveMode as 'new' | 'overwrite' | 'version',
+      targetPageId: isNumberString(value.targetPageId) ? Number(value.targetPageId) : undefined,
     }
   }),
   async (c) => {
-    const { title, pageDesc = '', pageUrl, pageFile, folderId, screenshot, bindTags, isShowcased } = c.req.valid('form')
+    const { title, pageDesc = '', pageUrl, pageFile, folderId, screenshot, bindTags, isShowcased, saveMode, targetPageId } = c.req.valid('form')
 
     // todo check folder exists?
 
@@ -73,6 +83,48 @@ app.post(
     if (isNil(contentUrl)) {
       return c.json({ status: 'error', message: 'Failed to upload file' })
     }
+
+    // Extract searchable text once; reused across all save modes for FTS.
+    let content = ''
+    try {
+      const html = typeof pageFile === 'string' ? pageFile : await (pageFile as File).text()
+      content = htmlToText(html)
+    }
+    catch (error) {
+      console.error('Failed to extract page text', error)
+    }
+
+    // Overwrite / new-version: mutate an existing page instead of inserting.
+    if (saveMode !== 'new' && isNotNil(targetPageId)) {
+      const existing = await getPageById(c.env.DB, { id: targetPageId, isDeleted: false })
+      if (isNil(existing)) {
+        return c.json(result.error(404, 'Target page not found'))
+      }
+
+      if (saveMode === 'version') {
+        // Keep the current capture as a historical snapshot (its R2 objects stay).
+        await insertPageVersion(c.env.DB, existing)
+      }
+      else {
+        // Overwrite: the old capture is discarded, so free its R2 objects.
+        await removeBucketFile(c.env.BUCKET, [existing.contentUrl, existing.screenshotId].filter(isNotNil) as string[])
+      }
+
+      const updated = await updatePageContent(c.env.DB, { id: targetPageId, title, pageDesc, contentUrl, screenshotId })
+      if (!updated) {
+        return c.json(result.error(500, 'Failed to update page'))
+      }
+
+      try {
+        await upsertPageFts(c.env.DB, { pageId: targetPageId, title, pageDesc, content })
+      }
+      catch (error) {
+        console.error('Failed to index page for full-text search', error)
+      }
+      await updateBindPageByTagName(c.env.DB, bindTags.map(tagName => ({ tagName, pageIds: [targetPageId] })), [])
+      return c.json(result.success(null))
+    }
+
     const insertId = await insertPage(c.env.DB, {
       title,
       pageDesc,
@@ -86,8 +138,7 @@ app.post(
       // Index the page for full-text search (best-effort; a failure here must not
       // fail the upload — the page can be re-indexed later via /reindex).
       try {
-        const html = typeof pageFile === 'string' ? pageFile : await (pageFile as File).text()
-        await upsertPageFts(c.env.DB, { pageId: insertId, title, pageDesc, content: htmlToText(html) })
+        await upsertPageFts(c.env.DB, { pageId: insertId, title, pageDesc, content })
       }
       catch (error) {
         console.error('Failed to index page for full-text search', error)
@@ -440,6 +491,46 @@ app.get(
     return c.html(
       await content.text(),
     )
+  },
+)
+
+// List archived historical snapshots for a page (metadata only).
+app.get(
+  '/versions',
+  validator('query', (value, c) => {
+    if (isNil(value.pageId) || !isNumberString(value.pageId)) {
+      return c.json(result.error(400, 'Page ID is required and should be a number'))
+    }
+    return { pageId: Number(value.pageId) }
+  }),
+  async (c) => {
+    const { pageId } = c.req.valid('query')
+    const versions = await queryPageVersions(c.env.DB, pageId)
+    return c.json(result.success(versions))
+  },
+)
+
+// Serve the archived HTML of a specific historical version.
+app.get(
+  '/version_content',
+  validator('query', (value, c) => {
+    if (isNil(value.versionId) || !isNumberString(value.versionId)) {
+      return c.json(result.error(400, 'Version ID is required and should be a number'))
+    }
+    return { versionId: Number(value.versionId) }
+  }),
+  async (c) => {
+    const { versionId } = c.req.valid('query')
+    const version = await getPageVersionById(c.env.DB, versionId)
+    if (isNil(version)) {
+      return c.json(result.error(404, 'Version not found'))
+    }
+    const content = await c.env.BUCKET.get(version.contentUrl)
+    if (!content) {
+      return c.json(result.error(404, 'Version data not found'))
+    }
+    c.res.headers.set('cache-control', 'private, max-age=604800')
+    return c.html(await content.text())
   },
 )
 

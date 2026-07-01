@@ -311,6 +311,52 @@ async function updatePage(DB: D1Database, options: UpdatePageOptions) {
   return result.every(r => r.success)
 }
 
+// Archive the current content of a page into page_versions (called before the
+// page row is overwritten with a newer capture in "new version" save mode).
+async function insertPageVersion(DB: D1Database, page: Pick<Page, 'id' | 'title' | 'pageDesc' | 'contentUrl' | 'screenshotId' | 'createdAt'>) {
+  const sql = `
+    INSERT INTO page_versions (pageId, title, pageDesc, contentUrl, screenshotId, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `
+  const result = await DB
+    .prepare(sql)
+    .bind(page.id, page.title, page.pageDesc, page.contentUrl, page.screenshotId, page.createdAt)
+    .run()
+  return result.success
+}
+
+// Replace a page's latest-version content pointers in place (used by both the
+// "overwrite" and "new version" save modes after the new file is in R2).
+async function updatePageContent(DB: D1Database, options: { id: number, title: string, pageDesc: string, contentUrl: string, screenshotId?: string | null }) {
+  const { id, title, pageDesc, contentUrl, screenshotId = null } = options
+  const sql = `
+    UPDATE pages
+    SET title = ?, pageDesc = ?, contentUrl = ?, screenshotId = ?, updatedAt = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `
+  const result = await DB.prepare(sql).bind(title, pageDesc, contentUrl, screenshotId, id).run()
+  return result.success
+}
+
+async function queryPageVersions(DB: D1Database, pageId: number) {
+  const sql = `
+    SELECT id, pageId, title, pageDesc, screenshotId, createdAt
+    FROM page_versions
+    WHERE pageId = ?
+    ORDER BY createdAt DESC, id DESC
+  `
+  const result = await DB.prepare(sql).bind(pageId).all()
+  if (result.error) {
+    throw result.error
+  }
+  return result.results
+}
+
+async function getPageVersionById(DB: D1Database, versionId: number) {
+  const sql = `SELECT * FROM page_versions WHERE id = ?`
+  return await DB.prepare(sql).bind(versionId).first<{ id: number, pageId: number, title: string, pageDesc: string, contentUrl: string, screenshotId: string | null, createdAt: string }>()
+}
+
 async function queryAllPageIds(DB: D1Database, folderId: number) {
   const sql = `
     SELECT id FROM pages WHERE folderId = ? AND isDeleted = 0
@@ -337,4 +383,8 @@ export {
   upsertPageFts,
   deletePageFtsByIds,
   queryPagesForReindex,
+  insertPageVersion,
+  updatePageContent,
+  queryPageVersions,
+  getPageVersionById,
 }

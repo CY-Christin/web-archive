@@ -21,6 +21,8 @@ declare module 'webext-bridge' {
         screenshot?: string
         bindTags: string[]
         isShowcased: boolean
+        saveMode?: 'new' | 'overwrite' | 'version'
+        targetPageId?: number
       }
     }, {}>
     'get-page-task-list': ProtocolWithReturn<{}, { taskList: Array<SeriableSingleFileTask> }>
