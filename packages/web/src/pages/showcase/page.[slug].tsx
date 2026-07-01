@@ -71,40 +71,40 @@ function ShowcasePage() {
   }, [pageContentUrl])
 
   return (
-    <main className="min-h-screen flex flex-col">
-      <div className="w-screen z-20 fixed flex justify-between items-center">
-        <Button variant="ghost" onClick={goHome} className="m-2">
-          <House className="w-8 h-8" />
+    <main className="flex min-h-screen flex-col bg-background">
+      <div className="fixed z-20 flex w-screen items-center justify-between border-b border-border bg-background/80 px-2 py-2 backdrop-blur">
+        <Button variant="ghost" size="icon" onClick={goHome}>
+          <House className="h-5 w-5" />
         </Button>
         <PoweredBy />
       </div>
       <div className="flex flex-1 pt-20">
-        <nav className="p-2 justify-between items-center hidden xl:flex">
-          <Button variant="ghost" size="sm" onClick={goBack} className="h-full">
-            <ArrowLeft className="w-5 h-5" />
+        <nav className="hidden items-center justify-center p-2 xl:flex">
+          <Button variant="ghost" size="icon" onClick={goBack} className="h-full">
+            <ArrowLeft className="h-5 w-5" />
           </Button>
         </nav>
         <div className="flex-1 p-4 pt-0">
           {
           (pageLoading || getNextLoading)
             ? (
-              <div className="w-full h-full flex flex-col items-center justify-center">
-                <div className="m-b-xl h-8 w-8 animate-spin border-4 border-t-transparent rounded-full border-primary"></div>
-                <div>Loading...</div>
+              <div className="flex h-full w-full flex-col items-center justify-center gap-3">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                <div className="text-sm text-muted-foreground">Loading...</div>
               </div>
               )
             : (
               <iframe
                 src={pageContentUrl}
-                className="w-full h-full bg-current"
+                className="h-full w-full rounded-lg border border-border bg-card"
                 sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
               />
               )
         }
         </div>
-        <nav className="p-2 justify-between items-center hidden xl:flex">
-          <Button variant="ghost" size="sm" onClick={() => goNext(Number(slug))} className="h-full">
-            <ArrowRight className="w-5 h-5" />
+        <nav className="hidden items-center justify-center p-2 xl:flex">
+          <Button variant="ghost" size="icon" onClick={() => goNext(Number(slug))} className="h-full">
+            <ArrowRight className="h-5 w-5" />
           </Button>
         </nav>
       </div>

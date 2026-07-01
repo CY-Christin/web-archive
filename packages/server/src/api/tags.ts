@@ -43,7 +43,7 @@ app.post(
     if (isNil(value.id) || !isNumberString(value.id)) {
       return c.json(result.error(400, 'ID is required'))
     }
-    if (isNil(value.name) && isNil(value.color)) {
+    if (isNil(value.name) && isNil(value.color) && value.icon === undefined) {
       return c.json(result.error(400, 'At least one field is required'))
     }
 
@@ -51,12 +51,13 @@ app.post(
       id: Number(value.id),
       name: value.name,
       color: value.color,
+      icon: value.icon as string | undefined,
     }
   }),
   async (c) => {
-    const { id, name, color } = c.req.valid('json')
+    const { id, name, color, icon } = c.req.valid('json')
 
-    if (await updateTag(c.env.DB, { id, name, color })) {
+    if (await updateTag(c.env.DB, { id, name, color, icon })) {
       return c.json(result.success(true))
     }
 

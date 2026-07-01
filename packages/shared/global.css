@@ -4,60 +4,61 @@
 
 @layer base {
   :root {
-    /* Light "Notion / paper" — warm off-white surface, pure-white cards */
-    --background: 48 33% 98%;
-    --foreground: 24 12% 12%;
+    /* Cool off-white canvas so white cards/sidebar lift off it. */
+    --background: 220 24% 97%;
+    --foreground: 216 14% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 24 12% 12%;
+    --card-foreground: 216 14% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 24 12% 12%;
-    --primary: 221.2 83.2% 53.3%;
+    --popover-foreground: 216 14% 12%;
+    /* Confident indigo — the one place we spend colour (plus per-tag hues). */
+    --primary: 174 72% 36%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 42 15% 94%;
-    --secondary-foreground: 24 12% 18%;
-    --muted: 42 15% 94%;
-    --muted-foreground: 30 6% 42%;
-    --accent: 42 18% 92%;
-    --accent-foreground: 24 12% 18%;
+    --secondary: 220 18% 95%;
+    --secondary-foreground: 216 14% 20%;
+    --muted: 220 18% 95%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 174 55% 95%;
+    --accent-foreground: 174 72% 26%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 42 12% 89%;
-    --input: 42 12% 87%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.625rem;
-    --chart-1: 221.2 83.2% 53.3%;
-    --chart-2: 212 95% 68%;
-    --chart-3: 216 92% 60%;
-    --chart-4: 210 98% 78%;
-    --chart-5: 212 97% 87%;
+    --border: 220 15% 91%;
+    --input: 220 15% 89%;
+    --ring: 174 72% 36%;
+    --radius: 0.75rem;
+    --chart-1: 174 72% 36%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 160 60% 45%;
+    --chart-4: 32 95% 58%;
+    --chart-5: 280 60% 60%;
   }
   .dark {
-    /* Warm charcoal — never pure black, cards lift off the surface */
-    --background: 24 8% 10%;
-    --foreground: 40 12% 90%;
-    --card: 24 8% 13%;
-    --card-foreground: 40 12% 90%;
-    --popover: 24 8% 13%;
-    --popover-foreground: 40 12% 90%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 24 7% 18%;
-    --secondary-foreground: 40 12% 90%;
-    --muted: 24 7% 18%;
-    --muted-foreground: 40 8% 62%;
-    --accent: 24 7% 20%;
-    --accent-foreground: 40 12% 90%;
-    --destructive: 0 62.8% 45%;
-    --destructive-foreground: 40 12% 95%;
-    --border: 30 6% 22%;
-    --input: 30 6% 24%;
-    --ring: 217.2 91.2% 59.8%;
-    --radius: 0.625rem;
-    --chart-1: 221.2 83.2% 53.3%;
-    --chart-2: 212 95% 68%;
-    --chart-3: 216 92% 60%;
-    --chart-4: 210 98% 78%;
-    --chart-5: 212 97% 87%;
+    /* Cool slate charcoal — never pure black; cards lift with a hair of light. */
+    --background: 222 20% 10%;
+    --foreground: 220 16% 92%;
+    --card: 222 17% 13%;
+    --card-foreground: 220 16% 92%;
+    --popover: 222 17% 13%;
+    --popover-foreground: 220 16% 92%;
+    --primary: 172 66% 50%;
+    --primary-foreground: 222 30% 12%;
+    --secondary: 222 14% 18%;
+    --secondary-foreground: 220 16% 92%;
+    --muted: 222 14% 18%;
+    --muted-foreground: 220 12% 62%;
+    --accent: 174 40% 22%;
+    --accent-foreground: 174 60% 80%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 220 16% 95%;
+    --border: 222 12% 22%;
+    --input: 222 12% 24%;
+    --ring: 172 66% 50%;
+    --radius: 0.75rem;
+    --chart-1: 172 66% 50%;
+    --chart-2: 199 89% 60%;
+    --chart-3: 160 55% 55%;
+    --chart-4: 32 95% 62%;
+    --chart-5: 280 65% 70%;
   }
 }
 
@@ -83,25 +84,25 @@
 
 @layer base {
   :root {
-    /* App chrome sits a touch warmer/grayer than the pure-white cards */
-    --sidebar-background: 45 22% 96%;
-    --sidebar-foreground: 30 8% 28%;
-    --sidebar-primary: 24 12% 15%;
-    --sidebar-primary-foreground: 48 33% 98%;
-    --sidebar-accent: 42 18% 92%;
-    --sidebar-accent-foreground: 24 12% 18%;
-    --sidebar-border: 42 12% 89%;
-    --sidebar-ring: 221.2 83.2% 53.3%;
+    /* Sidebar sits on white to separate it from the cool canvas. */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 216 12% 30%;
+    --sidebar-primary: 174 72% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 174 55% 95%;
+    --sidebar-accent-foreground: 174 72% 26%;
+    --sidebar-border: 220 15% 92%;
+    --sidebar-ring: 174 72% 36%;
   }
 
   .dark {
-    --sidebar-background: 24 8% 12%;
-    --sidebar-foreground: 40 10% 84%;
-    --sidebar-primary: 217.2 91.2% 59.8%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 24 7% 19%;
-    --sidebar-accent-foreground: 40 10% 90%;
-    --sidebar-border: 30 6% 22%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 222 18% 12%;
+    --sidebar-foreground: 220 14% 78%;
+    --sidebar-primary: 172 66% 50%;
+    --sidebar-primary-foreground: 222 30% 12%;
+    --sidebar-accent: 174 40% 22%;
+    --sidebar-accent-foreground: 174 60% 80%;
+    --sidebar-border: 222 12% 20%;
+    --sidebar-ring: 172 66% 50%;
   }
 }

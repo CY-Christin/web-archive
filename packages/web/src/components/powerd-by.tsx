@@ -3,14 +3,14 @@ import { GithubIcon } from './github'
 
 function Comp() {
   return (
-    <a href="https://github.com/ray-d-song/web-archive" target="_blank" rel="noreferrer" className="flex items-center justify-end gap-1 h-16 m-2 text-white bg-blue-600 p-2 rounded-lg self-end w-52">
-      <div className="flex flex-col">
-        <span>powered by</span>
-        <span className="font-bold text-lg">
+    <a href="https://github.com/ray-d-song/web-archive" target="_blank" rel="noreferrer" className="m-2 flex items-center justify-end gap-2 self-end rounded-lg border border-border bg-card px-3 py-2 text-foreground shadow-card transition-colors hover:bg-accent">
+      <div className="flex flex-col leading-tight">
+        <span className="text-xs text-muted-foreground">powered by</span>
+        <span className="font-display text-base font-semibold">
           Web Archive
         </span>
       </div>
-      <GithubIcon className="inline-block h-10 w-10" />
+      <GithubIcon className="inline-block h-7 w-7" />
     </a>
   )
 }

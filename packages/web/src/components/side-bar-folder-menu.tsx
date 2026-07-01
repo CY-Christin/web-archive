@@ -1,9 +1,6 @@
-import { Button } from '@web-archive/shared/components/button'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@web-archive/shared/components/collapsible'
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub } from '@web-archive/shared/components/side-bar'
-import { Skeleton } from '@web-archive/shared/components/skeleton'
-import { cn, isNil } from '@web-archive/shared/utils'
-import { ChevronDown, FolderIcon, Plus } from 'lucide-react'
+import { SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuSkeleton } from '@web-archive/shared/components/side-bar'
+import { isNil } from '@web-archive/shared/utils'
+import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import type { Folder as FolderType } from '@web-archive/shared/types'
 import { useRequest } from 'ahooks'
@@ -35,8 +32,6 @@ interface SidebarFolderCollapseProps {
 function SidebarFolderMenu({ openedFolder, setOpenedFolder, className }: SidebarFolderCollapseProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-
-  const [isFoldersCollapseOpen, setIsFoldersCollapseOpen] = useState(true)
 
   const { data: folders, refresh, mutate: setFolders, loading: foldersLoading } = useRequest(getAllFolder)
 
@@ -70,8 +65,9 @@ function SidebarFolderMenu({ openedFolder, setOpenedFolder, className }: Sidebar
   }
 
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false)
+
   return (
-    <SidebarMenu className={className}>
+    <SidebarGroup className={className}>
       <NewFolderDialog afterSubmit={refresh} open={newFolderDialogOpen} setOpen={setNewFolderDialogOpen} />
       <EditFolderDialog
         afterSubmit={refresh}
@@ -79,59 +75,46 @@ function SidebarFolderMenu({ openedFolder, setOpenedFolder, className }: Sidebar
         setOpen={setEditFolderDialogOpen}
         editFolder={editFolder}
       />
-      <Collapsible
-        open={isFoldersCollapseOpen}
-        onOpenChange={setIsFoldersCollapseOpen}
+
+      <SidebarGroupLabel>{t('folders')}</SidebarGroupLabel>
+      <SidebarGroupAction
+        onClick={() => setNewFolderDialogOpen(true)}
+        title={t('add-folder')}
+        aria-label={t('add-folder')}
       >
-        <CollapsibleTrigger asChild>
-          <SidebarMenuButton className="w-full justify-between">
-            <div className="flex items-center">
-              <FolderIcon className="mr-2 h-4 w-4" />
-              {t('folders')}
-            </div>
-            <ChevronDown className={cn('h-4 w-4 transition-transform', isFoldersCollapseOpen && 'rotate-180')} />
-          </SidebarMenuButton>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <SidebarMenuSub>
-            {foldersLoading
-              ? (
-                <>
-                  {Array.from({ length: 3 }).map((_, index) => (
-                    <Skeleton key={index} className="w-full h-8 rounded-md" />
-                  ))}
-                </>
-                )
-              : (
-                  folders?.map(folder => (
-                    <SidebarMenuItem key={folder.id}>
-                      <Link to="/folder/:slug" params={{ slug: folder.id.toString() }}>
-                        <SidebarMenuButton>
-                          <Folder
-                            name={folder.name}
-                            id={folder.id}
-                            isOpen={openedFolder === folder.id}
-                            onDelete={handleDeleteFolder}
-                            onEdit={handleEditFolder}
-                          />
+        <Plus />
+      </SidebarGroupAction>
 
-                        </SidebarMenuButton>
-                      </Link>
-
-                    </SidebarMenuItem>
-                  ))
-                )}
-            <SidebarMenuItem>
-              <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent" onClick={() => setNewFolderDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                {t('add-folder')}
-              </Button>
-            </SidebarMenuItem>
-          </SidebarMenuSub>
-
-        </CollapsibleContent>
-      </Collapsible>
-    </SidebarMenu>
+      <SidebarGroupContent>
+        <SidebarMenu className="gap-0.5">
+          {foldersLoading
+            ? (
+                Array.from({ length: 3 }).map((_, index) => (
+                  <SidebarMenuSkeleton key={index} showIcon />
+                ))
+              )
+            : (
+                folders?.map(folder => (
+                  <SidebarMenuItem key={folder.id}>
+                    <Link
+                      to="/folder/:slug"
+                      params={{ slug: folder.id.toString() }}
+                      className="block outline-none"
+                    >
+                      <Folder
+                        name={folder.name}
+                        id={folder.id}
+                        isOpen={openedFolder === folder.id}
+                        onDelete={handleDeleteFolder}
+                        onEdit={handleEditFolder}
+                      />
+                    </Link>
+                  </SidebarMenuItem>
+                ))
+              )}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
   )
 }
 

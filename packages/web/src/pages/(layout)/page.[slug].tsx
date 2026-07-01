@@ -106,12 +106,15 @@ function ArchivePage() {
   const { readMode, setReadMode } = useContext(AppContext)
 
   return (
-    <main className="h-screen w-screen lg:w-full flex flex-col">
-      <nav className="p-2 w-full flex justify-between items-center">
-        <Button variant="ghost" size="sm" onClick={goBack}>
-          <ArrowLeft className="w-5 h-5" />
+    <main className="flex h-screen w-screen flex-col bg-background lg:w-full">
+      <nav className="flex items-center gap-3 border-b border-border bg-background/80 px-4 py-3 backdrop-blur">
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={goBack}>
+          <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className="flex space-x-2">
+        <h1 className="min-w-0 flex-1 truncate font-display text-base font-semibold text-foreground">
+          {pageDetail?.title}
+        </h1>
+        <div className="flex shrink-0 items-center gap-2">
           {versions && versions.length > 0 && (
             <Select value={selectedVersion} onValueChange={setSelectedVersion}>
               <SelectTrigger className="h-9 w-[180px]">
@@ -131,10 +134,7 @@ function ArchivePage() {
             href={pageContentUrl ?? ''}
             download={`${pageDetail?.title ?? 'Download'}.html`}
           >
-            <Button
-              variant="default"
-              size="sm"
-            >
+            <Button variant="default" size="sm">
               {t('download')}
             </Button>
           </a>
@@ -147,20 +147,23 @@ function ArchivePage() {
             {readMode ? t('open-iframe-mode') : t('open-read-mode')}
           </Button>
           <Button
-            variant="destructive"
-            size="sm"
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-destructive"
             onClick={handleDeletePage}
           >
-            <Trash className="w-5 h-5" />
+            <Trash className="h-4 w-4" />
           </Button>
         </div>
       </nav>
-      <div className="flex-1 p-4 w-full">
-        <LoadingWrapper loading={pageLoading}>
-          {readMode
-            ? <ReadabilityPageContent pageHtml={pageHtml || ''} />
-            : <IframePageContent pageContentUrl={pageContentUrl || ''} />}
-        </LoadingWrapper>
+      <div className="min-h-0 w-full flex-1 p-4">
+        <div className="h-full overflow-auto rounded-lg border border-border bg-card">
+          <LoadingWrapper loading={pageLoading}>
+            {readMode
+              ? <ReadabilityPageContent pageHtml={pageHtml || ''} />
+              : <IframePageContent pageContentUrl={pageContentUrl || ''} />}
+          </LoadingWrapper>
+        </div>
       </div>
     </main>
   )

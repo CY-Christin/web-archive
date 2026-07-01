@@ -14,7 +14,7 @@ function deleteTag(tagId: number): Promise<void> {
   })
 }
 
-function updateTag(body: { id: number, name: string }): Promise<void> {
+function updateTag(body: { id: number, name?: string, color?: string, icon?: string | null }): Promise<void> {
   return fetcher<void>(`/tags/update`, {
     method: 'POST',
     body,

@@ -1,4 +1,5 @@
 import { Button } from '@web-archive/shared/components/button'
+import { ScrollArea } from '@web-archive/shared/components/scroll-area'
 import { useRequest } from 'ahooks'
 import { ArchiveRestore } from 'lucide-react'
 import { useEffect } from 'react'
@@ -37,28 +38,39 @@ function Trash() {
   }, [])
 
   return (
-    <div className="px-2">
-      <div className="m-2 flex justify-end">
-        <Button variant="destructive" onClick={handleClearAll}>
+    <div className="flex h-screen flex-1 flex-col">
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-background/80 px-6 py-4 backdrop-blur">
+        <div className="min-w-0">
+          <h1 className="truncate font-display text-xl font-semibold text-foreground">{t('trash')}</h1>
+          {data !== undefined && (
+            <p className="text-xs text-muted-foreground">{t('n-items', { count: data.length })}</p>
+          )}
+        </div>
+        <Button variant="destructive" size="sm" className="shrink-0" onClick={handleClearAll}>
           {t('clear-all')}
         </Button>
       </div>
-      <EmptyWrapper empty={data?.length === 0}>
-        <ListView pages={data}>
-          {page => (
-            <Button
-              variant="link"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation()
-                runRestorePage(page.id)
-              }}
-            >
-              <ArchiveRestore className="h-4 w-4" />
-            </Button>
-          )}
-        </ListView>
-      </EmptyWrapper>
+      <ScrollArea className="flex-1 overflow-auto">
+        <div className="p-6">
+          <EmptyWrapper empty={data?.length === 0}>
+            <ListView pages={data}>
+              {page => (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    runRestorePage(page.id)
+                  }}
+                >
+                  <ArchiveRestore className="h-4 w-4" />
+                </Button>
+              )}
+            </ListView>
+          </EmptyWrapper>
+        </div>
+      </ScrollArea>
     </div>
   )
 }

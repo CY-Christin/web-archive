@@ -36,17 +36,19 @@ function ShowcaseFolderPage() {
   )
 
   return (
-    <div className="flex flex-col flex-1">
-      <PoweredBy />
-      <ScrollArea ref={scrollRef} className="p-4 overflow-auto h-[calc(100vh-84px)]">
-        <LoadingWrapper loading={pagesLoading || (!pagesData)}>
-          <div className="h-full">
+    <div className="flex h-screen flex-1 flex-col bg-background">
+      <div className="flex justify-end border-b border-border bg-background/80 px-2 py-2 backdrop-blur">
+        <PoweredBy />
+      </div>
+      <ScrollArea ref={scrollRef} className="flex-1 overflow-auto">
+        <div className="p-6">
+          <LoadingWrapper loading={pagesLoading || (!pagesData)}>
             <EmptyWrapper empty={pagesData?.list.length === 0}>
               <CardView pages={pagesData?.list} onPageDelete={() => { }} />
             </EmptyWrapper>
             {loadingMore && <LoadingMore />}
-          </div>
-        </LoadingWrapper>
+          </LoadingWrapper>
+        </div>
       </ScrollArea>
     </div>
   )

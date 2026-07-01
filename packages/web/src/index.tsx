@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import '@fontsource-variable/inter'
+import '@fontsource-variable/space-grotesk'
 import '@web-archive/shared/global.css'
 import { useLocalStorageState } from 'ahooks'
 import { useMemo } from 'react'
@@ -27,7 +28,7 @@ function Routes() {
       }), [view, setView, readMode, setReadMode])
     }
     >
-      <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+      <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
         <RouterProvider router={router} />
       </ThemeProvider>
     </AppContext.Provider>

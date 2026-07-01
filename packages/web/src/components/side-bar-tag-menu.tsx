@@ -1,15 +1,14 @@
-import { Badge } from '@web-archive/shared/components/badge'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@web-archive/shared/components/collapsible'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@web-archive/shared/components/context-menu'
-import { SidebarMenu, SidebarMenuButton, SidebarMenuSub } from '@web-archive/shared/components/side-bar'
+import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel } from '@web-archive/shared/components/side-bar'
 import type { Tag } from '@web-archive/shared/types'
 import { cn } from '@web-archive/shared/utils'
 import { useRequest } from 'ahooks'
-import { ChevronDown, Pencil, TagIcon, Trash } from 'lucide-react'
+import { Pencil, Trash } from 'lucide-react'
 import { useContext, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useTranslation } from 'react-i18next'
 import EditTagDialog from './edit-tag-dialog'
+import TagIcon from './tag-icon'
 import { deleteTag } from '~/data/tag'
 import TagContext from '~/store/tag'
 import { queryAllPageIds } from '~/data/page'
@@ -20,7 +19,7 @@ interface SidebarTagMenuProps {
   setSelectedTag: (tag: number | null) => void
 }
 
-interface TagBadgeProps {
+interface TagChipProps {
   tag: Tag
   isSelected: boolean
   onClick: () => void
@@ -28,34 +27,36 @@ interface TagBadgeProps {
   onEdit: () => void
 }
 
-function TagBadge({ tag, isSelected, onClick, onDelete, onEdit }: TagBadgeProps) {
+function TagChip({ tag, isSelected, onClick, onDelete, onEdit }: TagChipProps) {
   const { t } = useTranslation()
-  const labelText = `${tag.name} (${tag.pageIds.length})`
   return (
     <ContextMenu>
-      <ContextMenuTrigger>
-        <Badge
-          key={tag.id}
-          className={cn(
-            'cursor-pointer h-fit select-none transition-colors',
-            isSelected && 'ring-1 ring-ring/40',
-          )}
-          variant={isSelected ? 'default' : 'secondary'}
+      <ContextMenuTrigger asChild>
+        <button
+          type="button"
           onClick={onClick}
+          className={cn(
+            'inline-flex max-w-full select-none items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+            isSelected
+              ? 'border-transparent bg-sidebar-accent font-medium text-sidebar-accent-foreground ring-1 ring-sidebar-ring'
+              : 'border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent',
+          )}
         >
-          {labelText}
-        </Badge>
+          <TagIcon tag={tag} />
+          <span className="truncate">{tag.name}</span>
+          <span className="tabular-nums text-sidebar-foreground/50">{tag.pageIds.length}</span>
+        </button>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-48 shadow-elevated">
         <ContextMenuItem
-          className="flex items-center space-x-2 cursor-pointer"
+          className="flex cursor-pointer items-center space-x-2"
           onClick={onEdit}
         >
           <Pencil size={12} />
           <div>{t('edit')}</div>
         </ContextMenuItem>
         <ContextMenuItem
-          className="flex items-center space-x-2 cursor-pointer"
+          className="flex cursor-pointer items-center space-x-2"
           onClick={onDelete}
         >
           <Trash size={12} />
@@ -69,7 +70,6 @@ function TagBadge({ tag, isSelected, onClick, onDelete, onEdit }: TagBadgeProps)
 function SidebarTagMenu({ selectedTag, setSelectedTag, selectedFolder }: SidebarTagMenuProps) {
   const { t } = useTranslation()
   const { tagCache: tags, refreshTagCache } = useContext(TagContext)
-  const [isTagsCollapseOpen, setIsTagsCollapseOpen] = useState(false)
 
   const handleClickTag = (tagId: number) => {
     if (selectedTag === tagId) {
@@ -110,42 +110,33 @@ function SidebarTagMenu({ selectedTag, setSelectedTag, selectedFolder }: Sidebar
       setShowTagList(newTags)
     })
   }, [selectedFolder, tags])
+
+  if (!showTagList || showTagList.length === 0)
+    return null
+
   return (
-    <SidebarMenu>
-      <EditTagDialog editTag={editTag} afterSubmit={refreshTagCache} open={editTagDialogOpen} setOpen={setEditTagDialogOpen}></EditTagDialog>
-      <Collapsible
-        open={isTagsCollapseOpen}
-        onOpenChange={setIsTagsCollapseOpen}
-      >
-        <CollapsibleTrigger asChild>
-          <SidebarMenuButton className="w-full justify-between">
-            <div className="flex items-center">
-              <TagIcon className="mr-2 h-4 w-4"></TagIcon>
-              {t('tags')}
-            </div>
-            <ChevronDown className={cn('h-4 w-4 transition-transform', isTagsCollapseOpen && 'rotate-180')} />
-          </SidebarMenuButton>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <SidebarMenuSub
-            onContextMenu={e => e.preventDefault()}
-          >
-            <div className="flex flex-wrap gap-1.5 py-1">
-              {showTagList?.map(tag => (
-                <TagBadge
-                  key={tag.id}
-                  tag={tag}
-                  isSelected={selectedTag === tag.id}
-                  onClick={() => handleClickTag(tag.id)}
-                  onDelete={() => { runDelete(tag.id) }}
-                  onEdit={() => { handleEditTag(tag) }}
-                />
-              ))}
-            </div>
-          </SidebarMenuSub>
-        </CollapsibleContent>
-      </Collapsible>
-    </SidebarMenu>
+    <SidebarGroup>
+      <EditTagDialog editTag={editTag} afterSubmit={refreshTagCache} open={editTagDialogOpen} setOpen={setEditTagDialogOpen} />
+
+      <SidebarGroupLabel>{t('tags')}</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <div
+          className="flex flex-wrap gap-1.5 px-2 py-1"
+          onContextMenu={e => e.preventDefault()}
+        >
+          {showTagList.map(tag => (
+            <TagChip
+              key={tag.id}
+              tag={tag}
+              isSelected={selectedTag === tag.id}
+              onClick={() => handleClickTag(tag.id)}
+              onDelete={() => { runDelete(tag.id) }}
+              onEdit={() => { handleEditTag(tag) }}
+            />
+          ))}
+        </div>
+      </SidebarGroupContent>
+    </SidebarGroup>
   )
 }
 

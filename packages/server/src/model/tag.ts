@@ -46,19 +46,19 @@ async function insertTag(DB: D1Database, options: { name: string, color: string 
   return sqlResult.success
 }
 
-async function updateTag(DB: D1Database, options: { id: number, name?: string, color?: string }) {
-  const { id, name, color } = options
+async function updateTag(DB: D1Database, options: { id: number, name?: string, color?: string, icon?: string | null }) {
+  const { id, name, color, icon } = options
   if (isNil(id)) {
     throw new Error('Tag id is required')
   }
-  if (isNil(name) && isNil(color)) {
+  if (isNil(name) && isNil(color) && icon === undefined) {
     throw new Error('At least one field is required')
   }
   let sql = `
     UPDATE tags
-    SET 
+    SET
   `
-  const bindParams: (number | string)[] = []
+  const bindParams: (number | string | null)[] = []
   if (name) {
     sql += `name = ?, `
     bindParams.push(name)
@@ -66,6 +66,11 @@ async function updateTag(DB: D1Database, options: { id: number, name?: string, c
   if (color) {
     sql += `color = ?, `
     bindParams.push(color)
+  }
+  // icon is intentionally settable to '' / null to clear it, so check for presence not truthiness.
+  if (icon !== undefined) {
+    sql += `icon = ?, `
+    bindParams.push(icon || null)
   }
   sql = `${sql.slice(0, -2)} WHERE id = ?`
   bindParams.push(id)

@@ -1,9 +1,9 @@
 import { HomeIcon, LogOut, Settings, SquareLibrary, Trash2 } from 'lucide-react'
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@web-archive/shared/components/side-bar'
+import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@web-archive/shared/components/side-bar'
 import { useEffect, useState } from 'react'
 import { isNumberString } from '@web-archive/shared/utils'
 import { useLocation } from 'react-router-dom'
-import { ScrollArea } from '@web-archive/shared/components/scroll-area'
+import { ThemeToggle } from '@web-archive/shared/components/theme-toggle'
 import { useTranslation } from 'react-i18next'
 import SettingDialog from './setting-dialog'
 import SidebarFolderMenu from './side-bar-folder-menu'
@@ -40,71 +40,64 @@ function Component({ selectedTag, setSelectedTag }: SidebarProps) {
     <Sidebar>
       <SettingDialog open={settingDialogOpen} setOpen={setSettingDialogOpen} />
 
-      <SidebarHeader>
-        <div className="flex items-center justify-center gap-2 px-2 py-1">
-          <img src="/static/logo.svg" className="w-10 scale-x-[-1]" />
-          <h2 className="text-lg font-semibold tracking-tight leading-5 text-foreground">
-            Web
-            <br />
-            {' '}
-            Archive
-          </h2>
-        </div>
+      <SidebarHeader className="px-3 pb-1 pt-3">
+        <Link
+          to="/"
+          className="flex items-center gap-2 rounded-md px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+        >
+          <img src="/static/logo.svg" className="h-7 w-7 shrink-0 rounded-[7px]" alt="" />
+          <span className="font-display text-lg font-semibold tracking-tight text-sidebar-foreground">
+            Web Archive
+          </span>
+        </Link>
       </SidebarHeader>
 
-      <SidebarContent className="mt-4 h-64 overflow-hidden">
-        <ScrollArea className="h-full overflow-auto">
+      <SidebarContent className="px-1 py-2">
+        <SidebarGroup className="py-1">
           <SidebarMenu>
-            <SidebarMenuButton
-              className="w-full justify-between"
-              asChild
-            >
-              <Link to="/">
-                <div className="flex items-center">
-                  <HomeIcon className="mr-2 h-4 w-4" />
-                  {t('home')}
-                </div>
-              </Link>
-            </SidebarMenuButton>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === '/'}>
+                <Link to="/">
+                  <HomeIcon />
+                  <span>{t('home')}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
-          <SidebarFolderMenu
-            openedFolder={openedFolder}
-            setOpenedFolder={setOpenedFolder}
-          />
-          <SidebarTagMenu
-            selectedTag={selectedTag}
-            setSelectedTag={setSelectedTag}
-            selectedFolder={openedFolder}
-          >
-          </SidebarTagMenu>
-        </ScrollArea>
+        </SidebarGroup>
 
+        <SidebarFolderMenu
+          openedFolder={openedFolder}
+          setOpenedFolder={setOpenedFolder}
+        />
+        <SidebarTagMenu
+          selectedTag={selectedTag}
+          setSelectedTag={setSelectedTag}
+          selectedFolder={openedFolder}
+        />
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="gap-1">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <Link to="/showcase/folder">
-                <SquareLibrary className="mr-2 h-4 w-4" />
-                Showcase
+                <SquareLibrary />
+                <span>Showcase</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={() => {
-              setSettingDialogOpen(true)
-            }}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              {t('settings')}
+            <SidebarMenuButton onClick={() => setSettingDialogOpen(true)}>
+              <Settings />
+              <span>{t('settings')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <Link to="/trash">
-                <Trash2 className="mr-2 h-4 w-4" />
-                {t('trash')}
+                <Trash2 />
+                <span>{t('trash')}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -114,13 +107,16 @@ function Component({ selectedTag, setSelectedTag }: SidebarProps) {
               handleLogout()
             }}
             >
-              <LogOut className="mr-2 h-4 w-4" />
-              {t('logout')}
+              <LogOut />
+              <span>{t('logout')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-      </SidebarFooter>
 
+        <div className="mt-1 flex items-center justify-end border-t border-sidebar-border px-1 pt-2">
+          <ThemeToggle />
+        </div>
+      </SidebarFooter>
     </Sidebar>
   )
 }

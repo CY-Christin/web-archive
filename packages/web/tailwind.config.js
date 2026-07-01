@@ -55,11 +55,12 @@ module.exports = {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        display: ['"Space Grotesk Variable"', '"Space Grotesk"', 'Inter', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        'card': '0 1px 2px 0 rgb(17 12 6 / 0.04), 0 1px 3px 0 rgb(17 12 6 / 0.03)',
-        'card-hover': '0 2px 4px -1px rgb(17 12 6 / 0.05), 0 6px 16px -3px rgb(17 12 6 / 0.06)',
-        'elevated': '0 4px 8px -2px rgb(17 12 6 / 0.06), 0 16px 32px -6px rgb(17 12 6 / 0.10)',
+        'card': '0 1px 2px 0 rgb(16 20 34 / 0.04), 0 1px 3px 0 rgb(16 20 34 / 0.03)',
+        'card-hover': '0 2px 4px -1px rgb(16 20 34 / 0.06), 0 8px 20px -4px rgb(16 20 34 / 0.08)',
+        'elevated': '0 4px 8px -2px rgb(16 20 34 / 0.06), 0 16px 32px -6px rgb(16 20 34 / 0.12)',
       },
       keyframes: {
         'accordion-down': {
