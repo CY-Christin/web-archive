@@ -46,7 +46,7 @@ function Layout() {
             />
             <div className="flex-1">
               <Hamburger className="lg:hidden block fixed top-[50%] left-0 cursor-pointer z-50" />
-              <Outlet context={{ keyword, searchTrigger, handleSearch, setKeyword, selectedTag }} />
+              <Outlet context={{ keyword, searchTrigger, handleSearch, setKeyword, selectedTag, setSelectedTag: setSelectedTagAndReload }} />
             </div>
           </div>
         </SidebarProvider>

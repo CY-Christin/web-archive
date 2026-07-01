@@ -1,26 +1,36 @@
 import { useInfiniteScroll, useRequest, useWhyDidYouUpdate } from 'ahooks'
 import type { Ref } from '@web-archive/shared/components/scroll-area'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { Page } from '@web-archive/shared/types'
 import { ScrollArea } from '@web-archive/shared/components/scroll-area'
+import { Badge } from '@web-archive/shared/components/badge'
 import { useOutletContext } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { isNil, isNotNil } from '@web-archive/shared/utils'
-import { useMediaQuery } from '~/hooks/useMediaQuery'
-import PageDataPieCard from '~/components/page-data-pie-card'
-import R2UsageCard from '~/components/r2-usage-card'
 import { deletePage, getRecentSavePage, queryPage } from '~/data/page'
 import PageCard from '~/components/page-card'
-import { getR2Usage } from '~/data/data'
 import Header from '~/components/header'
 import LoadingWrapper from '~/components/loading-wrapper'
 import CardView from '~/components/card-view'
 import LoadingMore from '~/components/loading-more'
 import { useShouldShowRecent } from '~/hooks/useShouldShowRecent'
+import TagContext from '~/store/tag'
 
-function RecentSavePageView() {
-  const { data: r2Data, loading: r2Loading } = useRequest(getR2Usage)
+interface HomeOutletContext {
+  keyword: string
+  searchTrigger: boolean
+  selectedTag: number | null
+  setKeyword: (keyword: string) => void
+  handleSearch: () => void
+  setSelectedTag: (tag: number | null) => void
+}
 
+// A calm "library" landing view: a tag cloud to jump into a filtered search,
+// plus recent additions grouped into a simple timeline by save date.
+function LibraryHome() {
+  const { t } = useTranslation()
+  const { setSelectedTag } = useOutletContext<HomeOutletContext>()
+  const { tagCache } = useContext(TagContext)
   const { shouldShowRecent } = useShouldShowRecent()
   const [pages, setPages] = useState<Page[]>([])
   useRequest(getRecentSavePage, {
@@ -29,17 +39,6 @@ function RecentSavePageView() {
     },
     ready: shouldShowRecent,
   })
-  const { '2xl': is2xlScreen, xl: isXlScreen, md: isMdScreen } = useMediaQuery()
-
-  const columnCount = useMemo(() => {
-    if (is2xlScreen)
-      return 4
-    if (isXlScreen)
-      return 3
-    if (isMdScreen)
-      return 2
-    return 1
-  }, [is2xlScreen, isXlScreen, isMdScreen])
 
   const { run: handleDeletePage } = useRequest(deletePage, {
     manual: true,
@@ -47,41 +46,78 @@ function RecentSavePageView() {
       setPages(pages.filter(page => page.id !== data?.id))
     },
   })
-  const reorganizedPages = useMemo(() => {
-    const result = Array.from({ length: columnCount }, () => [])
-    return result.map((_, idx) =>
-      pages
-        .filter((_, index) => index % columnCount === idx)
-        .map(page => (
-          <PageCard key={page.id} page={page} onPageDelete={handleDeletePage} />
-        )),
-    )
-  }, [pages, columnCount])
+
+  // Scale each tag's size by how many pages carry it (four buckets).
+  const maxTagCount = useMemo(
+    () => tagCache.reduce((max, tag) => Math.max(max, tag.pageIds.length), 0),
+    [tagCache],
+  )
+  const tagSizeClass = (count: number) => {
+    if (maxTagCount === 0)
+      return 'text-sm'
+    const ratio = count / maxTagCount
+    if (ratio > 0.75)
+      return 'text-lg'
+    if (ratio > 0.5)
+      return 'text-base'
+    if (ratio > 0.25)
+      return 'text-sm'
+    return 'text-xs'
+  }
+
+  // Group recent pages into date buckets, preserving the newest-first order.
+  const timeline = useMemo(() => {
+    const groups: { date: string, pages: Page[] }[] = []
+    for (const page of pages) {
+      const date = String(page.createdAt).slice(0, 10)
+      const last = groups[groups.length - 1]
+      if (last && last.date === date)
+        last.pages.push(page)
+      else
+        groups.push({ date, pages: [page] })
+    }
+    return groups
+  }, [pages])
 
   return (
-    <ScrollArea className="p-4 overflow-auto  h-[calc(100vh-58px)]">
-      <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-        {
-          shouldShowRecent
-            ? reorganizedPages.map((item, idx) => (
-              <div key={idx} className="flex flex-col gap-4">
-                {idx === 0 && <PageDataPieCard />}
-                {columnCount === 1 ? <R2UsageCard loading={r2Loading} data={r2Data} /> : idx === 1 && <R2UsageCard loading={r2Loading} data={r2Data} />}
-                {item}
-              </div>
-            ))
-            : (
-                [
-                  <div key={1}>
-                    <PageDataPieCard key={1} />
-                  </div>,
-                  <div key={2}>
-                    <R2UsageCard loading={r2Loading} data={r2Data} key={2} />
-                  </div>,
-                ].map(item => (item))
-              )
-        }
+    <ScrollArea className="p-6 overflow-auto h-[calc(100vh-58px)]">
+      <div className="mx-auto max-w-6xl space-y-8">
+        {tagCache.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-muted-foreground">{t('tags')}</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              {tagCache.map(tag => (
+                <Badge
+                  key={tag.id}
+                  variant="secondary"
+                  className={`cursor-pointer select-none transition-colors hover:bg-accent ${tagSizeClass(tag.pageIds.length)}`}
+                  onClick={() => setSelectedTag(tag.id)}
+                >
+                  {tag.name}
+                  <span className="ml-1 text-muted-foreground">{tag.pageIds.length}</span>
+                </Badge>
+              ))}
+            </div>
+          </section>
+        )}
 
+        {shouldShowRecent && (
+          <section className="space-y-6">
+            <h2 className="text-sm font-semibold text-muted-foreground">{t('recent-added')}</h2>
+            {timeline.length === 0
+              ? <div className="text-sm text-muted-foreground">{t('no-pages-yet')}</div>
+              : timeline.map(group => (
+                <div key={group.date} className="space-y-3">
+                  <h3 className="text-xs font-medium text-muted-foreground">{group.date}</h3>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    {group.pages.map(page => (
+                      <PageCard key={page.id} page={page} onPageDelete={handleDeletePage} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+          </section>
+        )}
       </div>
     </ScrollArea>
   )
@@ -184,7 +220,7 @@ function ArchiveHome() {
       <Header keyword={keyword} setKeyword={setKeyword} handleSearch={handleStartSearch}></Header>
       {showSearchView
         ? <SearchiPageView></SearchiPageView>
-        : <RecentSavePageView></RecentSavePageView>}
+        : <LibraryHome></LibraryHome>}
 
     </div>
   )

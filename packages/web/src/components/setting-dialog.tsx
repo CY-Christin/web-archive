@@ -5,19 +5,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@web-archive/shared/components/switch'
 import { useTheme } from '@web-archive/shared/components/theme-provider'
 import { Settings } from 'lucide-react'
+import { useRequest } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import LanguageCombobox from '@web-archive/shared/components/language-combobox'
 import AITagSettingCollapsible from './ai-tag-setting-collapsible'
+import PageDataPieCard from './page-data-pie-card'
+import R2UsageCard from './r2-usage-card'
 import { useShouldShowRecent } from '~/hooks/useShouldShowRecent'
+import { getR2Usage } from '~/data/data'
 
 function SettingDialog({ open, setOpen }: { open: boolean, setOpen: (open: boolean) => void }) {
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
   const { shouldShowRecent, updateShouldShowRecent } = useShouldShowRecent()
+  const { data: r2Data, loading: r2Loading } = useRequest(getR2Usage, { ready: open })
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="shadow-elevated">
+      <DialogContent className="max-h-[85vh] overflow-y-auto shadow-elevated">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5 text-muted-foreground" />
@@ -64,6 +69,15 @@ function SettingDialog({ open, setOpen }: { open: boolean, setOpen: (open: boole
           </div>
           <div>
             <AITagSettingCollapsible></AITagSettingCollapsible>
+          </div>
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold text-foreground">
+              {t('statistics')}
+            </Label>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <PageDataPieCard />
+              <R2UsageCard loading={r2Loading} data={r2Data} />
+            </div>
           </div>
         </div>
       </DialogContent>
