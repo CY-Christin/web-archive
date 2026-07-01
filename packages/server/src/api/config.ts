@@ -60,8 +60,8 @@ app.post(
     const modelError = {
       message: 'Model name is required',
     }
-    const apiUrlError = {
-      message: 'API URL is required',
+    const baseUrlError = {
+      message: 'Base URL is required',
     }
     const apiKeyError = {
       message: 'API Key is required',
@@ -77,7 +77,7 @@ app.post(
       tagLanguage: z.enum(['en', 'zh']).default('en'),
       model: z.string(modelError).min(1, modelError),
       preferredTags: z.array(z.string()).default([]),
-      apiUrl: z.string(apiUrlError).min(1, apiUrlError),
+      baseUrl: z.string(baseUrlError).min(1, baseUrlError),
       apiKey: z.string(apiKeyError).min(1, apiKeyError),
     })
 

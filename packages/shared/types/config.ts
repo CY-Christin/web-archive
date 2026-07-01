@@ -18,7 +18,9 @@ interface CloudFlareAITagConfig extends BaseAITagConfig {
 interface OpenAIConfig extends BaseAITagConfig {
   type: 'openai'
   apiKey: string
-  apiUrl: string
+  // Base URL of an OpenAI-compatible endpoint, e.g. https://api.deepseek.com or https://api.openai.com/v1.
+  // A full `.../chat/completions` URL is also accepted (see joinCompletionsUrl) for backward compatibility.
+  baseUrl: string
 }
 
 export { ConfigKey, AITagConfig, OpenAIConfig, CloudFlareAITagConfig }

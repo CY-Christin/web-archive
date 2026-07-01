@@ -59,11 +59,22 @@ function generateChatCompletion(tagLanguage: string, preferredTags: string[]): s
   `
 }
 
+// Normalize an OpenAI-compatible base URL into a full chat/completions endpoint.
+// Accepts either a base URL (https://api.deepseek.com, https://api.openai.com/v1)
+// or an already-complete endpoint (…/chat/completions, …/completions) for backward compatibility.
+export function joinCompletionsUrl(baseUrl: string): string {
+  const trimmed = (baseUrl ?? '').trim().replace(/\/+$/, '')
+  if (trimmed.endsWith('/chat/completions') || trimmed.endsWith('/completions')) {
+    return trimmed
+  }
+  return `${trimmed}/chat/completions`
+}
+
 export async function generateTagByOpenAI(props: GenerateTagProps): Promise<Array<string>> {
   if (props.type !== 'openai') {
     throw new Error('Invalid AI tag config')
   }
-  const res = await fetch(props.apiUrl, {
+  const res = await fetch(joinCompletionsUrl(props.baseUrl), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

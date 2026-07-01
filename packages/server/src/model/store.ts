@@ -69,7 +69,13 @@ async function getAITagConfig(DB: D1Database): Promise<AITagConfig> {
       preferredTags: [],
     }
   }
-  return JSON.parse(result.results[0].value) as AITagConfig
+  const config = JSON.parse(result.results[0].value) as AITagConfig & { apiUrl?: string }
+  // Backward compatibility: older configs stored the field as `apiUrl` (a full completions URL).
+  // Map it to the new `baseUrl` field so callers only ever see `baseUrl`.
+  if (config.type === 'openai' && !config.baseUrl && config.apiUrl) {
+    config.baseUrl = config.apiUrl
+  }
+  return config
 }
 
 async function setAITagConfig(DB: D1Database, config: AITagConfig): Promise<boolean> {

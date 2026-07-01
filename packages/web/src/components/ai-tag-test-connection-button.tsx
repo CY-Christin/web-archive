@@ -2,7 +2,6 @@ import { Button } from '@web-archive/shared/components/button'
 import { AlertCircle, Check, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import type { GenerateTagProps } from '@web-archive/shared/utils'
-import { generateTagByOpenAI } from '@web-archive/shared/utils'
 import { useRequest } from 'ahooks'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@web-archive/shared/components/tooltip'
 import type { AITagConfig } from '@web-archive/shared/types'
@@ -14,10 +13,9 @@ interface Props {
   onValidate: () => Promise<boolean>
 }
 
+// Always run through the server so OpenAI-compatible endpoints (OpenAI / DeepSeek / custom)
+// aren't blocked by browser CORS and the API key never leaves the server.
 async function generateTagByConfig(config: GenerateTagProps) {
-  if (config.type === 'openai') {
-    return await generateTagByOpenAI(config)
-  }
   return await generateTag(config)
 }
 

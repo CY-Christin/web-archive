@@ -17,9 +17,15 @@ import AITagTestConnectionButton from './ai-tag-test-connection-button'
 import { getAITagConfig, setAITagConfig } from '~/data/config'
 import TagContext from '~/store/tag'
 
+const OPENAI_PRESETS: Record<'openai' | 'deepseek', { baseUrl: string, model: string }> = {
+  openai: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
+  deepseek: { baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat' },
+}
+
 function AITagSettingCollapsible() {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [preset, setPreset] = useState<'openai' | 'deepseek' | 'custom'>('custom')
 
   const formSchema = z.discriminatedUnion('type', [
     z.object({
@@ -33,7 +39,7 @@ function AITagSettingCollapsible() {
       tagLanguage: z.enum(['en', 'zh']),
       model: z.string().min(1, { message: t('model-name-is-required') }),
       preferredTags: z.array(z.string()),
-      apiUrl: z.string().url({ message: t('please-enter-a-valid-api-url') }),
+      baseUrl: z.string().url({ message: t('please-enter-a-valid-base-url') }),
       apiKey: z.string().min(1, { message: t('api-key-is-required') }),
     }),
   ])
@@ -42,7 +48,7 @@ function AITagSettingCollapsible() {
     defaultValues: {
       type: 'openai',
       tagLanguage: 'en',
-      apiUrl: '',
+      baseUrl: '',
       apiKey: '',
       model: '',
       preferredTags: [],
@@ -55,6 +61,11 @@ function AITagSettingCollapsible() {
     {
       onSuccess: (data) => {
         form.reset(data)
+        if (data.type === 'openai') {
+          const matched = (Object.keys(OPENAI_PRESETS) as Array<'openai' | 'deepseek'>)
+            .find(key => OPENAI_PRESETS[key].baseUrl === data.baseUrl)
+          setPreset(matched ?? 'custom')
+        }
       },
     },
   )
@@ -158,14 +169,39 @@ function AITagSettingCollapsible() {
               {
                 form.watch('type') === 'openai' && (
                   <>
+                    <FormItem>
+                      <FormLabel>{t('aiTag-provider-preset')}</FormLabel>
+                      <Select
+                        value={preset}
+                        onValueChange={(value: 'openai' | 'deepseek' | 'custom') => {
+                          setPreset(value)
+                          if (value !== 'custom') {
+                            form.setValue('baseUrl', OPENAI_PRESETS[value].baseUrl, { shouldValidate: true })
+                            form.setValue('model', OPENAI_PRESETS[value].model, { shouldValidate: true })
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('aiTag-provider-preset')}></SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="openai">OpenAI</SelectItem>
+                          <SelectItem value="deepseek">DeepSeek</SelectItem>
+                          <SelectItem value="custom">{t('aiTag-provider-custom')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        {t('aiTag-provider-preset-desc')}
+                      </FormDescription>
+                    </FormItem>
                     <FormField
                       control={form.control}
-                      name="apiUrl"
+                      name="baseUrl"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>API URL</FormLabel>
+                          <FormLabel>{t('base-url')}</FormLabel>
                           <FormControl>
-                            <Input placeholder="https://api.openai.com/v1/chat/completions" {...field} />
+                            <Input placeholder="https://api.deepseek.com" {...field} />
                           </FormControl>
                           <FormMessage></FormMessage>
                         </FormItem>
@@ -200,7 +236,7 @@ function AITagSettingCollapsible() {
                       <Input
                         placeholder={form.watch('type') === 'cloudflare'
                           ? '@cf/mistral/mistral-7b-instruct-v0.1/...'
-                          : 'gpt-4/gpt-4/...'}
+                          : 'deepseek-chat / gpt-4o-mini / ...'}
                         {...field}
                       />
                     </FormControl>
