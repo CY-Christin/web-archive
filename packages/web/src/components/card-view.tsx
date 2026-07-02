@@ -1,15 +1,20 @@
 import type { Page } from '@web-archive/shared/types'
 import PageCard from './page-card'
 
-// Masonry via CSS columns — cards keep their natural height (cover + text)
-// and flow into balanced columns. PageCard uses break-inside-avoid.
-function CardView({ pages, onPageDelete }: { pages?: Page[], onPageDelete: (page: Page) => void }) {
+interface CardViewProps {
+  pages?: Page[]
+  variant?: 'archive' | 'dashboard'
+  onDelete?: (id: number) => void
+  onEdited?: (id: number) => void
+}
+
+// Uniform card grid from the redesign (replaces the old masonry columns);
+// auto-fill keeps it responsive down to a single column on mobile.
+function CardView({ pages, variant, onDelete, onEdited }: CardViewProps) {
   return (
-    <div className="gap-4 [column-fill:_balance] columns-1 sm:columns-2 lg:columns-3 2xl:columns-4">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(272px,1fr))] gap-4">
       {pages?.map(page => (
-        <div key={page.id} className="mb-4">
-          <PageCard page={page} onPageDelete={onPageDelete} />
-        </div>
+        <PageCard key={page.id} page={page} variant={variant} onDelete={onDelete} onEdited={onEdited} />
       ))}
     </div>
   )

@@ -20,7 +20,9 @@ export function useMediaQuery(): Breakpoints
 export function useMediaQuery<T extends string>(query: T): boolean
 
 export function useMediaQuery(query?: string): Breakpoints | boolean {
-  const [matches, setMatches] = useState(false)
+  // Initialize synchronously so layout code (e.g. the mobile drawer) doesn't
+  // render one desktop frame before the effect runs.
+  const [matches, setMatches] = useState(() => (query ? window.matchMedia(query).matches : false))
   const [breakpoints, setBreakpoints] = useState<Breakpoints>({
     'sm': false,
     'md': false,

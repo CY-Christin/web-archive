@@ -106,7 +106,9 @@ function ArchivePage() {
   const { readMode, setReadMode } = useContext(AppContext)
 
   return (
-    <main className="flex h-screen w-screen flex-col bg-background lg:w-full">
+    // Fill the layout's #main-scroll box (h-screen/w-screen would overflow the
+    // topbar + padding of the new shell).
+    <main className="flex h-full w-full flex-col bg-background">
       <nav className="flex items-center gap-3 border-b border-border bg-background/80 px-4 py-3 backdrop-blur">
         <Button variant="ghost" size="icon" className="shrink-0" onClick={goBack}>
           <ArrowLeft className="h-4 w-4" />

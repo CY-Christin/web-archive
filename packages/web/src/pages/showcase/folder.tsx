@@ -44,7 +44,7 @@ function ShowcaseFolderPage() {
         <div className="p-6">
           <LoadingWrapper loading={pagesLoading || (!pagesData)}>
             <EmptyWrapper empty={pagesData?.list.length === 0}>
-              <CardView pages={pagesData?.list} onPageDelete={() => { }} />
+              <CardView pages={pagesData?.list} />
             </EmptyWrapper>
             {loadingMore && <LoadingMore />}
           </LoadingWrapper>

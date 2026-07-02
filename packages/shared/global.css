@@ -2,63 +2,99 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Redesign palette, two themes. Dark mode stays CLASS-based (:root = light,
+ * `.dark` on <html> via ThemeProvider) — do not switch to data-theme.
+ *
+ * Two var families live here:
+ * 1. Design tokens as plain color values — consume directly: `var(--surface)`,
+ *    `var(--chart-1)` (NOT wrapped in hsl()).
+ * 2. shadcn semantic vars as HSL triplets — consumed as `hsl(var(--primary))`
+ *    by untouched shadcn components; remapped onto the same palette.
+ */
+
 @layer base {
   :root {
-    /* Cool off-white canvas so white cards/sidebar lift off it. */
-    --background: 220 24% 97%;
-    --foreground: 216 14% 12%;
-    --card: 0 0% 100%;
-    --card-foreground: 216 14% 12%;
+    /* --- design tokens (plain colors) --- */
+    --surface: #ffffff;
+    --surface-2: #faf9f7;
+    --sidebar-bg: #ffffff;
+    --border-strong: #dad8d1;
+    --text-faint: #9a9ea6;
+    --accent-soft: #eaf0fd;
+    --accent-hover: #2f5fce;
+    --danger: #dc5540;
+    --danger-soft: #fbeae6;
+    --success: #1f8a5b;
+    --shadow: 0 10px 30px -18px rgba(20, 22, 28, 0.22);
+    /* chart / category colors — plain hex, use as var(--chart-n) directly */
+    --chart-1: #3b6fe0;
+    --chart-2: #1f8a5b;
+    --chart-3: #d9932b;
+    --chart-4: #8b5cf6;
+    --chart-5: #e0533b;
+
+    /* --- shadcn semantic vars (HSL triplets) --- */
+    --background: 60 8.3% 95.3%; /* --bg #f4f4f2 */
+    --foreground: 222.9 12.3% 11.2%; /* --text #191b20 */
+    --card: 0 0% 100%; /* --surface #ffffff */
+    --card-foreground: 222.9 12.3% 11.2%;
     --popover: 0 0% 100%;
-    --popover-foreground: 216 14% 12%;
-    /* Confident indigo — the one place we spend colour (plus per-tag hues). */
-    --primary: 174 72% 36%;
+    --popover-foreground: 222.9 12.3% 11.2%;
+    --primary: 221.1 72.7% 55.5%; /* --accent #3b6fe0 */
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 18% 95%;
-    --secondary-foreground: 216 14% 20%;
-    --muted: 220 18% 95%;
-    --muted-foreground: 220 9% 46%;
-    --accent: 174 55% 95%;
-    --accent-foreground: 174 72% 26%;
-    --destructive: 0 72% 51%;
+    --secondary: 40 23.1% 97.5%; /* --surface-2 #faf9f7 */
+    --secondary-foreground: 222.9 12.3% 11.2%;
+    --muted: 40 23.1% 97.5%;
+    --muted-foreground: 220 5.3% 44.3%; /* --text-muted #6b6f77 */
+    --accent: 40 23.1% 97.5%; /* hover fill = --surface-2 */
+    --accent-foreground: 222.9 12.3% 11.2%;
+    --destructive: 8.1 69% 55.7%; /* --danger #dc5540 */
     --destructive-foreground: 0 0% 100%;
-    --border: 220 15% 91%;
-    --input: 220 15% 89%;
-    --ring: 174 72% 36%;
+    --border: 50 11.5% 89.8%; /* --border #e8e7e2 */
+    --input: 46.7 10.8% 83.7%; /* --border-strong #dad8d1 */
+    --ring: 221.1 72.7% 55.5%; /* --accent */
     --radius: 0.75rem;
-    --chart-1: 174 72% 36%;
-    --chart-2: 199 89% 48%;
-    --chart-3: 160 60% 45%;
-    --chart-4: 32 95% 58%;
-    --chart-5: 280 60% 60%;
   }
+
   .dark {
-    /* Cool slate charcoal — never pure black; cards lift with a hair of light. */
-    --background: 222 20% 10%;
-    --foreground: 220 16% 92%;
-    --card: 222 17% 13%;
-    --card-foreground: 220 16% 92%;
-    --popover: 222 17% 13%;
-    --popover-foreground: 220 16% 92%;
-    --primary: 172 66% 50%;
-    --primary-foreground: 222 30% 12%;
-    --secondary: 222 14% 18%;
-    --secondary-foreground: 220 16% 92%;
-    --muted: 222 14% 18%;
-    --muted-foreground: 220 12% 62%;
-    --accent: 174 40% 22%;
-    --accent-foreground: 174 60% 80%;
-    --destructive: 0 62% 45%;
-    --destructive-foreground: 220 16% 95%;
-    --border: 222 12% 22%;
-    --input: 222 12% 24%;
-    --ring: 172 66% 50%;
+    --surface: #161a21;
+    --surface-2: #1b1f28;
+    --sidebar-bg: #12151b;
+    --border-strong: #343a45;
+    --text-faint: #666d78;
+    --accent-soft: #17203a;
+    --accent-hover: #78a0ff;
+    --danger: #ef6a52;
+    --danger-soft: #2c1a17;
+    --success: #38b47f;
+    --shadow: 0 12px 34px -18px rgba(0, 0, 0, 0.6);
+    --chart-1: #5b8bff;
+    --chart-2: #38b47f;
+    --chart-3: #e0a63a;
+    --chart-4: #a385ff;
+    --chart-5: #ef6a52;
+
+    --background: 220 18.8% 6.3%; /* --bg #0d0f13 */
+    --foreground: 216 12.8% 92.4%; /* --text #e9ebee */
+    --card: 218.2 20% 10.8%; /* --surface #161a21 */
+    --card-foreground: 216 12.8% 92.4%;
+    --popover: 218.2 20% 10.8%;
+    --popover-foreground: 216 12.8% 92.4%;
+    --primary: 222.4 100% 67.8%; /* --accent #5b8bff */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 221.5 19.4% 13.1%; /* --surface-2 #1b1f28 */
+    --secondary-foreground: 216 12.8% 92.4%;
+    --muted: 221.5 19.4% 13.1%;
+    --muted-foreground: 217.5 8.6% 63.5%; /* --text-muted #9aa0aa */
+    --accent: 221.5 19.4% 13.1%;
+    --accent-foreground: 216 12.8% 92.4%;
+    --destructive: 9.2 83.1% 62.9%; /* --danger #ef6a52 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 218.6 15.6% 17.6%; /* --border #262b34 */
+    --input: 218.8 14% 23.7%; /* --border-strong #343a45 */
+    --ring: 222.4 100% 67.8%;
     --radius: 0.75rem;
-    --chart-1: 172 66% 50%;
-    --chart-2: 199 89% 60%;
-    --chart-3: 160 55% 55%;
-    --chart-4: 32 95% 62%;
-    --chart-5: 280 65% 70%;
   }
 }
 
@@ -67,9 +103,41 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background font-sans text-foreground;
+    -webkit-font-smoothing: antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/* Entrance / activity keyframes (tailwind animation utilities reference these). */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 9px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 @layer utilities {
@@ -79,30 +147,5 @@
   }
   .webkit-scrollbar-hide::-webkit-scrollbar {
     display: none;
-  }
-}
-
-@layer base {
-  :root {
-    /* Sidebar sits on white to separate it from the cool canvas. */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 216 12% 30%;
-    --sidebar-primary: 174 72% 36%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 174 55% 95%;
-    --sidebar-accent-foreground: 174 72% 26%;
-    --sidebar-border: 220 15% 92%;
-    --sidebar-ring: 174 72% 36%;
-  }
-
-  .dark {
-    --sidebar-background: 222 18% 12%;
-    --sidebar-foreground: 220 14% 78%;
-    --sidebar-primary: 172 66% 50%;
-    --sidebar-primary-foreground: 222 30% 12%;
-    --sidebar-accent: 174 40% 22%;
-    --sidebar-accent-foreground: 174 60% 80%;
-    --sidebar-border: 222 12% 20%;
-    --sidebar-ring: 172 66% 50%;
   }
 }

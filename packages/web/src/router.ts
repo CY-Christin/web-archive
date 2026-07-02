@@ -5,10 +5,13 @@ import { components, hooks, utils } from '@generouted/react-router/client'
 
 export type Path =
   | `/`
+  | `/archive`
   | `/error/:slug`
   | `/folder/:slug`
   | `/login`
   | `/page/:slug`
+  | `/search`
+  | `/settings`
   | `/showcase/folder`
   | `/showcase/page/:slug`
   | `/trash`

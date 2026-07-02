@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@web-archive/shared/components/textarea'
 import { Button } from '@web-archive/shared/components/button'
 import { toast } from 'react-hot-toast'
-import { useOutletContext } from 'react-router-dom'
 import AutoCompleteTagInput from '@web-archive/shared/components/auto-complete-tag-input'
 import { useTranslation } from 'react-i18next'
 import LoadingWrapper from '~/components/loading-wrapper'
@@ -27,7 +26,6 @@ interface CardEditDialogProps {
 
 function Comp({ open, onOpenChange, pageId }: CardEditDialogProps) {
   const { t } = useTranslation()
-  const { handleSearch } = useOutletContext<{ handleSearch: () => void }>()
 
   const { data: folders, loading: foldersLoading, run: getAllFolderRun } = useRequest(getAllFolder, {
     manual: true,
@@ -93,16 +91,19 @@ function Comp({ open, onOpenChange, pageId }: CardEditDialogProps) {
     onSuccess: () => {
       toast.success(t('page-update-success'))
       refreshTagCache()
-      handleSearch()
+      // List re-sync happens in the PageCard owner via onEdited when the dialog closes.
       onOpenChange(false)
     },
   })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTitle></DialogTitle>
-      <DialogDescription></DialogDescription>
+      {/* Title/description must live inside DialogContent: outside it they
+          render as always-present empty h2/p siblings of the card, each
+          stealing a cell in CardView's grid. */}
       <DialogContent className="shadow-elevated">
+        <DialogTitle className="sr-only">{t('edit-page')}</DialogTitle>
+        <DialogDescription className="sr-only">{t('edit-page')}</DialogDescription>
         <LoadingWrapper loading={loading || foldersLoading}>
           <Form {...form}>
             <form
