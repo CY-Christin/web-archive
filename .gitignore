@@ -44,3 +44,6 @@ docs/.vitepress/dist
 docs/.vitepress/cache
 # local wrangler config (contains real D1 database_id)
 packages/server/wrangler.toml
+
+# local planning/session notes (may contain real ids/tokens)
+archive/
