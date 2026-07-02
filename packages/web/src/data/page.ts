@@ -32,9 +32,9 @@ function queryPage(body: {
   // Ignored while keyword search is active (FTS results are relevance-ranked).
   sort?: 'newest' | 'oldest'
 }): Promise<{
-  list: Page[]
-  total: number
-}> {
+    list: Page[]
+    total: number
+  }> {
   return fetcher<{
     list: Page[]
     total: number
@@ -66,9 +66,9 @@ function searchPages(body: {
   pageNumber?: number
   pageSize?: number
 }): Promise<{
-  list: SearchResultItem[]
-  total: number
-}> {
+    list: SearchResultItem[]
+    total: number
+  }> {
   return fetcher<{
     list: SearchResultItem[]
     total: number

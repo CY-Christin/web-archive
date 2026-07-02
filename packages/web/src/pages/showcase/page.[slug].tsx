@@ -86,21 +86,21 @@ function ShowcasePage() {
         </nav>
         <div className="flex-1 p-4 pt-0">
           {
-          (pageLoading || getNextLoading)
-            ? (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-3">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-                <div className="text-sm text-muted-foreground">Loading...</div>
-              </div>
-              )
-            : (
-              <iframe
-                src={pageContentUrl}
-                className="h-full w-full rounded-lg border border-border bg-card"
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-              />
-              )
-        }
+            (pageLoading || getNextLoading)
+              ? (
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-3">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                    <div className="text-sm text-muted-foreground">Loading...</div>
+                  </div>
+                )
+              : (
+                  <iframe
+                    src={pageContentUrl}
+                    className="h-full w-full rounded-lg border border-border bg-card"
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                  />
+                )
+          }
         </div>
         <nav className="hidden items-center justify-center p-2 xl:flex">
           <Button variant="ghost" size="icon" onClick={() => goNext(Number(slug))} className="h-full">

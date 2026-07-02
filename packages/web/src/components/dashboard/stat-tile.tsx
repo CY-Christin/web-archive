@@ -18,16 +18,16 @@ function StatTile({ icon, label, value, sub, loading = false }: StatTileProps) {
       </div>
       {loading
         ? (
-          <>
-            <Skeleton className="h-[38px] w-24" />
-            <Skeleton className="mt-1.5 h-4 w-32" />
-          </>
+            <>
+              <Skeleton className="h-[38px] w-24" />
+              <Skeleton className="mt-1.5 h-4 w-32" />
+            </>
           )
         : (
-          <>
-            <div className="font-mono text-[30px] font-semibold tracking-[-0.02em] text-foreground">{value}</div>
-            {sub != null && <div className="mt-1.5 text-xs text-faint">{sub}</div>}
-          </>
+            <>
+              <div className="font-mono text-[30px] font-semibold tracking-[-0.02em] text-foreground">{value}</div>
+              {sub != null && <div className="mt-1.5 text-xs text-faint">{sub}</div>}
+            </>
           )}
     </div>
   )

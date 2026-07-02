@@ -112,19 +112,19 @@ function CaptureCleanupSettings() {
         {extensions.length === 0
           ? <div className="text-xs text-muted-foreground">{t('capture-cleanup-empty')}</div>
           : (
-            <div className="max-h-32 space-y-1 overflow-auto">
-              {extensions.map(ext => (
-                <div key={ext.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`draft-${ext.id}`}
-                    checked={draftExtIds.includes(ext.id)}
-                    onCheckedChange={checked => setDraftExtIds(prev => checked === true ? [...prev, ext.id] : prev.filter(x => x !== ext.id))}
-                  >
-                  </Checkbox>
-                  <Label htmlFor={`draft-${ext.id}`} className="text-sm leading-none">{ext.name}</Label>
-                </div>
-              ))}
-            </div>
+              <div className="max-h-32 space-y-1 overflow-auto">
+                {extensions.map(ext => (
+                  <div key={ext.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`draft-${ext.id}`}
+                      checked={draftExtIds.includes(ext.id)}
+                      onCheckedChange={checked => setDraftExtIds(prev => checked === true ? [...prev, ext.id] : prev.filter(x => x !== ext.id))}
+                    >
+                    </Checkbox>
+                    <Label htmlFor={`draft-${ext.id}`} className="text-sm leading-none">{ext.name}</Label>
+                  </div>
+                ))}
+              </div>
             )}
         <Button
           className="w-full"

@@ -5,9 +5,9 @@ function queryShowcase(options: {
   pageNumber: number
   pageSize: number
 }): Promise<{
-  list: Page[]
-  total: number
-}> {
+    list: Page[]
+    total: number
+  }> {
   return fetcher<{
     list: Page[]
     total: number

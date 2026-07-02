@@ -71,12 +71,12 @@ function Dashboard() {
           loading={r2Loading}
           value={storage
             ? (
-              <>
-                {storage.value}
-                <span className="text-base text-muted-foreground">
-                  {` ${storage.unit}`}
-                </span>
-              </>
+                <>
+                  {storage.value}
+                  <span className="text-base text-muted-foreground">
+                    {` ${storage.unit}`}
+                  </span>
+                </>
               )
             : '0'}
           sub={t('stat-storage-sub')}
@@ -107,24 +107,24 @@ function Dashboard() {
 
       {recentLoading
         ? (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(272px,1fr))] gap-4">
-            {Array.from({ length: 4 }, (_, i) => (
-              <Skeleton key={i} className="h-[280px] rounded-card" />
-            ))}
-          </div>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(272px,1fr))] gap-4">
+              {Array.from({ length: 4 }, (_, i) => (
+                <Skeleton key={i} className="h-[280px] rounded-card" />
+              ))}
+            </div>
           )
         : recent.length > 0
           ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(272px,1fr))] gap-4">
-              {recent.map(page => (
-                <PageCard key={page.id} page={page} variant="dashboard" />
-              ))}
-            </div>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(272px,1fr))] gap-4">
+                {recent.map(page => (
+                  <PageCard key={page.id} page={page} variant="dashboard" />
+                ))}
+              </div>
             )
           : (
-            <div className="rounded-card border border-border bg-surface py-14 text-center">
-              <div className="text-[15px] font-bold text-muted-foreground">{t('no-pages-yet')}</div>
-            </div>
+              <div className="rounded-card border border-border bg-surface py-14 text-center">
+                <div className="text-[15px] font-bold text-muted-foreground">{t('no-pages-yet')}</div>
+              </div>
             )}
     </div>
   )

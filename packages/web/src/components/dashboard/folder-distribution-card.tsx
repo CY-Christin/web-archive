@@ -56,57 +56,57 @@ function FolderDistributionCard({ loading, chartData, folders }: FolderDistribut
 
       {loading || !chartData
         ? (
-          <div className="flex items-center gap-8 max-desk:flex-col max-desk:items-start max-desk:gap-5">
-            <Skeleton className="h-[168px] w-[168px] shrink-0 rounded-full" />
-            <div className="flex min-w-0 flex-1 flex-col gap-[11px] max-desk:w-full">
-              {Array.from({ length: 4 }, (_, i) => (
-                <Skeleton key={i} className="h-[19px] w-full" />
-              ))}
+            <div className="flex items-center gap-8 max-desk:flex-col max-desk:items-start max-desk:gap-5">
+              <Skeleton className="h-[168px] w-[168px] shrink-0 rounded-full" />
+              <div className="flex min-w-0 flex-1 flex-col gap-[11px] max-desk:w-full">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <Skeleton key={i} className="h-[19px] w-full" />
+                ))}
+              </div>
             </div>
-          </div>
           )
         : (
-          <div className="flex items-center gap-8 max-desk:flex-col max-desk:items-start max-desk:gap-5">
-            {chart.data.length > 0
-              ? (
-                <div className="relative h-[168px] w-[168px] shrink-0">
-                  {/* Hole overlays the (transparent-centered) svg; pointer-events-none
+            <div className="flex items-center gap-8 max-desk:flex-col max-desk:items-start max-desk:gap-5">
+              {chart.data.length > 0
+                ? (
+                    <div className="relative h-[168px] w-[168px] shrink-0">
+                      {/* Hole overlays the (transparent-centered) svg; pointer-events-none
                       keeps ring hover + tooltip working near the hole's box corners */}
-                  <DonutHole total={chartData.all} />
-                  <ChartContainer config={chart.config} className="h-[168px] w-[168px]">
-                    <PieChart>
-                      <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                      <Pie
-                        data={chart.data}
-                        dataKey="count"
-                        nameKey="folder"
-                        innerRadius={52}
-                        outerRadius={84}
-                        stroke="none"
-                      />
-                    </PieChart>
-                  </ChartContainer>
-                </div>
-                )
-              : (
-                <div className="relative flex h-[168px] w-[168px] shrink-0 items-center justify-center rounded-full bg-surface-2">
-                  <DonutHole total={chartData.all} />
-                </div>
-                )}
+                      <DonutHole total={chartData.all} />
+                      <ChartContainer config={chart.config} className="h-[168px] w-[168px]">
+                        <PieChart>
+                          <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                          <Pie
+                            data={chart.data}
+                            dataKey="count"
+                            nameKey="folder"
+                            innerRadius={52}
+                            outerRadius={84}
+                            stroke="none"
+                          />
+                        </PieChart>
+                      </ChartContainer>
+                    </div>
+                  )
+                : (
+                    <div className="relative flex h-[168px] w-[168px] shrink-0 items-center justify-center rounded-full bg-surface-2">
+                      <DonutHole total={chartData.all} />
+                    </div>
+                  )}
 
-            <div className="flex min-w-0 flex-1 flex-col gap-[11px]">
-              {chart.data.map(item => (
-                <div key={item.folder} className="flex items-center gap-2.5">
-                  <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: item.fill }} />
-                  <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-foreground">{item.folder}</span>
-                  <span className="font-mono text-[12.5px] text-muted-foreground">{formatCount(item.count)}</span>
-                </div>
-              ))}
-              {chart.data.length === 0 && chartData.all === 0 && (
-                <div className="text-[13px] text-muted-foreground">{t('no-pages-yet')}</div>
-              )}
+              <div className="flex min-w-0 flex-1 flex-col gap-[11px]">
+                {chart.data.map(item => (
+                  <div key={item.folder} className="flex items-center gap-2.5">
+                    <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: item.fill }} />
+                    <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-foreground">{item.folder}</span>
+                    <span className="font-mono text-[12.5px] text-muted-foreground">{formatCount(item.count)}</span>
+                  </div>
+                ))}
+                {chart.data.length === 0 && chartData.all === 0 && (
+                  <div className="text-[13px] text-muted-foreground">{t('no-pages-yet')}</div>
+                )}
+              </div>
             </div>
-          </div>
           )}
     </div>
   )

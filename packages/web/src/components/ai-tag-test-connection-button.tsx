@@ -64,27 +64,27 @@ function AITagTestConnectionButton({ getConfig, onValidate }: Props) {
           >
             {loading
               ? (
-                <>
-                  <Loader2 size={15} className="animate-spin" />
-                  {t('testing')}
-                </>
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    {t('testing')}
+                  </>
                 )
               : (
-                <>
-                  {status === 'untested' && t('test-connection')}
-                  {status === 'success' && (
-                    <>
-                      <Check size={15} className="text-success" />
-                      {t('successed')}
-                    </>
-                  )}
-                  {status === 'error' && (
-                    <>
-                      <AlertCircle size={15} className="text-danger" />
-                      {t('failed')}
-                    </>
-                  )}
-                </>
+                  <>
+                    {status === 'untested' && t('test-connection')}
+                    {status === 'success' && (
+                      <>
+                        <Check size={15} className="text-success" />
+                        {t('successed')}
+                      </>
+                    )}
+                    {status === 'error' && (
+                      <>
+                        <AlertCircle size={15} className="text-danger" />
+                        {t('failed')}
+                      </>
+                    )}
+                  </>
                 )}
           </button>
         </TooltipTrigger>

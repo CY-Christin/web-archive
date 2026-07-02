@@ -250,11 +250,11 @@ function ArchiveView({ folderId }: { folderId?: number }) {
       {initialLoading
         ? (view === 'card' ? <CardGridSkeleton /> : <ListSkeleton />)
         : (
-          <EmptyWrapper empty={pagesData?.list.length === 0}>
-            {view === 'card'
-              ? <CardView pages={pagesData?.list} onDelete={handleDelete} onEdited={handleEdited} />
-              : <ListView pages={pagesData?.list} onItemClick={handleItemClick} onDelete={handleDelete} />}
-          </EmptyWrapper>
+            <EmptyWrapper empty={pagesData?.list.length === 0}>
+              {view === 'card'
+                ? <CardView pages={pagesData?.list} onDelete={handleDelete} onEdited={handleEdited} />
+                : <ListView pages={pagesData?.list} onItemClick={handleItemClick} onDelete={handleDelete} />}
+            </EmptyWrapper>
           )}
       {loadingMore && <LoadingMore />}
     </div>

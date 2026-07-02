@@ -81,37 +81,37 @@ function AppTopbar({ isMobile, onOpenDrawer }: AppTopbarProps) {
       <div className="ml-auto flex shrink-0 items-center gap-2.5">
         {isMobile
           ? (
-            <button
-              type="button"
-              aria-label={t('open-command-palette')}
-              className="flex h-10 w-10 items-center justify-center rounded-field border border-border-strong bg-surface-2 text-muted-foreground"
-              onClick={() => emitter.emit('openCommandPalette')}
-            >
-              <Search size={18} strokeWidth={1.9} />
-            </button>
-            )
-          : (
-            <div className="flex h-10 min-w-[240px] items-center gap-2 rounded-field border border-border-strong bg-surface-2 px-3 focus-within:border-primary focus-within:shadow-focus-ring">
-              <Search size={17} strokeWidth={1.9} className="shrink-0 text-faint" />
-              <input
-                value={keyword}
-                onChange={e => setKeyword(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter')
-                    handleSearchSubmit()
-                }}
-                placeholder={t('topbar-search-placeholder')}
-                className="w-full flex-1 bg-transparent text-sm font-medium text-foreground outline-none placeholder:text-faint"
-              />
               <button
                 type="button"
                 aria-label={t('open-command-palette')}
-                className="shrink-0 rounded-[6px] border border-border-strong px-[7px] py-[2px] font-mono text-[11px] text-faint hover:border-primary hover:text-primary"
+                className="flex h-10 w-10 items-center justify-center rounded-field border border-border-strong bg-surface-2 text-muted-foreground"
                 onClick={() => emitter.emit('openCommandPalette')}
               >
-                ⌘K
+                <Search size={18} strokeWidth={1.9} />
               </button>
-            </div>
+            )
+          : (
+              <div className="flex h-10 min-w-[240px] items-center gap-2 rounded-field border border-border-strong bg-surface-2 px-3 focus-within:border-primary focus-within:shadow-focus-ring">
+                <Search size={17} strokeWidth={1.9} className="shrink-0 text-faint" />
+                <input
+                  value={keyword}
+                  onChange={e => setKeyword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter')
+                      handleSearchSubmit()
+                  }}
+                  placeholder={t('topbar-search-placeholder')}
+                  className="w-full flex-1 bg-transparent text-sm font-medium text-foreground outline-none placeholder:text-faint"
+                />
+                <button
+                  type="button"
+                  aria-label={t('open-command-palette')}
+                  className="shrink-0 rounded-[6px] border border-border-strong px-[7px] py-[2px] font-mono text-[11px] text-faint hover:border-primary hover:text-primary"
+                  onClick={() => emitter.emit('openCommandPalette')}
+                >
+                  ⌘K
+                </button>
+              </div>
             )}
 
         {!isMobile && (

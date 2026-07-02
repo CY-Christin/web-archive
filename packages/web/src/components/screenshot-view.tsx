@@ -29,10 +29,10 @@ const ScreenshotView = memo(({ screenshotId, className, loadingClassName }: Scre
   return (
     screenshotLoading || isNil(screenshot)
       ? (
-        <Skeleton className={loadingClassName} />
+          <Skeleton className={loadingClassName} />
         )
       : (
-        <img src={screenshot} className={className} />
+          <img src={screenshot} className={className} />
         )
   )
 })

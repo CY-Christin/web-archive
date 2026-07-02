@@ -27,57 +27,57 @@ function StorageCard({ loading, usage, totalPages }: StorageCardProps) {
 
       {loading || !usage
         ? (
-          <>
-            <Skeleton className="h-9 w-40" />
-            <Skeleton className="mt-3.5 h-3 w-full rounded-[8px]" />
-            <Skeleton className="mt-4 h-[19px] w-56" />
-          </>
+            <>
+              <Skeleton className="h-9 w-40" />
+              <Skeleton className="mt-3.5 h-3 w-full rounded-[8px]" />
+              <Skeleton className="mt-4 h-[19px] w-56" />
+            </>
           )
         : (
-          <>
-            <div className="mb-3.5 flex items-baseline gap-2">
-              <span className="font-mono text-[28px] font-semibold tracking-[-0.02em] text-foreground">
-                {formatSizeText(usage.size)}
-              </span>
-              <span className="text-[13px] text-faint">
-                {t('storage-objects-count', { total: formatCount(usage.count) })}
-              </span>
-            </div>
+            <>
+              <div className="mb-3.5 flex items-baseline gap-2">
+                <span className="font-mono text-[28px] font-semibold tracking-[-0.02em] text-foreground">
+                  {formatSizeText(usage.size)}
+                </span>
+                <span className="text-[13px] text-faint">
+                  {t('storage-objects-count', { total: formatCount(usage.count) })}
+                </span>
+              </div>
 
-            <div className="flex h-3 overflow-hidden rounded-[8px] bg-surface-2">
-              {attributed > 0 && (
-                <>
-                  <div className="bg-chart-1" style={{ width: `${htmlPct}%` }} />
-                  <div className="flex-1 bg-chart-3" />
-                </>
+              <div className="flex h-3 overflow-hidden rounded-[8px] bg-surface-2">
+                {attributed > 0 && (
+                  <>
+                    <div className="bg-chart-1" style={{ width: `${htmlPct}%` }} />
+                    <div className="flex-1 bg-chart-3" />
+                  </>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-5">
+                <div className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
+                  <span aria-hidden className="h-[9px] w-[9px] shrink-0 rounded-[3px] bg-chart-1" />
+                  <span>
+                    {t('storage-html-label')}
+                    {' · '}
+                    {formatSizeText(htmlSize)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
+                  <span aria-hidden className="h-[9px] w-[9px] shrink-0 rounded-[3px] bg-chart-3" />
+                  <span>
+                    {t('storage-screenshot-label')}
+                    {' · '}
+                    {formatSizeText(screenshotSize)}
+                  </span>
+                </div>
+              </div>
+
+              {totalPages != null && totalPages > 0 && (
+                <div className="mt-auto pt-5 font-mono text-xs text-faint">
+                  {t('storage-avg-per-page', { size: formatSizeText(usage.size / totalPages) })}
+                </div>
               )}
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-5">
-              <div className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
-                <span aria-hidden className="h-[9px] w-[9px] shrink-0 rounded-[3px] bg-chart-1" />
-                <span>
-                  {t('storage-html-label')}
-                  {' · '}
-                  {formatSizeText(htmlSize)}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
-                <span aria-hidden className="h-[9px] w-[9px] shrink-0 rounded-[3px] bg-chart-3" />
-                <span>
-                  {t('storage-screenshot-label')}
-                  {' · '}
-                  {formatSizeText(screenshotSize)}
-                </span>
-              </div>
-            </div>
-
-            {totalPages != null && totalPages > 0 && (
-              <div className="mt-auto pt-5 font-mono text-xs text-faint">
-                {t('storage-avg-per-page', { size: formatSizeText(usage.size / totalPages) })}
-              </div>
-            )}
-          </>
+            </>
           )}
     </div>
   )
