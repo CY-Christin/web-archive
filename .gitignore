@@ -42,3 +42,5 @@ note_zh.md
 
 docs/.vitepress/dist
 docs/.vitepress/cache
+# local wrangler config (contains real D1 database_id)
+packages/server/wrangler.toml
