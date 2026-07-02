@@ -4,6 +4,7 @@ import { useRequest } from 'ahooks'
 import { ArrowLeft, Trash } from 'lucide-react'
 import { useContext, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation } from 'react-router-dom'
 import IframePageContent from '~/components/iframe-page-content'
 import LoadingWrapper from '~/components/loading-wrapper'
 import ReadabilityPageContent from '~/components/readability-page-content'
@@ -59,11 +60,17 @@ function ArchivePage() {
     },
   )
 
+  // Return to wherever the user came from (/, /archive, /folder/:id, /search…).
+  // location.key === 'default' means this is the first in-app history entry
+  // (deep link / ctrl-click new tab) — only then fall back to the page's folder.
+  const location = useLocation()
   const goBack = () => {
-    if (pageDetail)
-      navigate('/folder/:slug', { params: { slug: String(pageDetail?.folderId) } })
-    else
+    if (location.key !== 'default')
       window.history.back()
+    else if (pageDetail)
+      navigate('/folder/:slug', { params: { slug: String(pageDetail.folderId) } })
+    else
+      navigate('/')
   }
 
   // Historical snapshots (empty when the page has only ever been saved once).
