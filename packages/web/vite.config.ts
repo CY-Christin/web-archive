@@ -2,7 +2,11 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import generouted from '@generouted/react-router/plugin'
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // Production assets are served under /static/ (see server.ts) so CSS url() refs
+  // (@font-face) and chunk imports resolve to /static/assets/…. Dev stays at / so
+  // http://localhost:7749/ serves the app normally.
+  base: command === 'build' ? '/static/' : '/',
   plugins: [react(), generouted()],
   resolve: {
     alias: {
@@ -19,11 +23,21 @@ export default defineConfig({
     },
   },
   build: {
+    // Single CSS bundle so the hardcoded /static/index.css link (server.ts) always
+    // resolves to the full Tailwind output.
+    cssCodeSplit: false,
     rollupOptions: {
       input: './src/index.tsx',
       output: {
         entryFileNames: 'index.js',
-        assetFileNames: 'index.css',
+        // CSS -> a single predictable index.css; fonts/images keep real names+extensions
+        // (forcing everything to 'index.css' collided fonts into numbered .css files).
+        assetFileNames: (info) => {
+          const name = info.name ?? ''
+          if (name.endsWith('.css'))
+            return 'index.css'
+          return 'assets/[name]-[hash][extname]'
+        },
         chunkFileNames: 'assets/[name]-[hash].js',
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
@@ -33,5 +47,7 @@ export default defineConfig({
       },
     },
     outDir: '../../dist/service/src/static',
+    // Clean stale assets instead of piling them up across builds.
+    emptyOutDir: true,
   },
-})
+}))
