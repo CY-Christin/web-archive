@@ -1,11 +1,14 @@
-import { ArrowLeft } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowLeft, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Checkbox } from '@web-archive/shared/components/checkbox'
 import { Label } from '@web-archive/shared/components/label'
 import { Input } from '@web-archive/shared/components/input'
+import { Button } from '@web-archive/shared/components/button'
 import { useTranslation } from 'react-i18next'
+import { sendMessage } from 'webext-bridge/popup'
 import LanguageCombobox from '@web-archive/shared/components/language-combobox'
 import { getSingleFileSetting, setSingleFileSetting } from '../utils/singleFile'
+import { getCurrentTab } from '../utils/tab'
 import type { PageType } from '~/popup/PopupPage'
 import type { SingleFileSetting } from '~/utils/singleFile'
 
@@ -28,7 +31,109 @@ function SettingPage({ setActivePage }: { setActivePage: (tab: PageType) => void
         <LanguageCombobox></LanguageCombobox>
       </div>
       <div>
+        <CaptureCleanupSettings></CaptureCleanupSettings>
+      </div>
+      <div>
         <SingleFileSettings></SingleFileSettings>
+      </div>
+    </div>
+  )
+}
+
+interface ExtensionInfo { id: string, name: string, enabled: boolean }
+interface CaptureRule { url: string, extIds: string[] }
+
+function CaptureCleanupSettings() {
+  const { t } = useTranslation()
+  const [extensions, setExtensions] = useState<ExtensionInfo[]>([])
+  const [rules, setRules] = useState<CaptureRule[]>([])
+  const [draftUrl, setDraftUrl] = useState('')
+  const [draftExtIds, setDraftExtIds] = useState<string[]>([])
+
+  useEffect(() => {
+    sendMessage('get-manageable-extensions', {}).then(({ extensions }) => setExtensions(extensions)).catch(() => {})
+    sendMessage('get-capture-disable-rules', {}).then(({ rules }) => setRules(rules)).catch(() => {})
+    getCurrentTab().then((tab) => {
+      if (tab?.url) {
+        try {
+          setDraftUrl(new URL(tab.url).hostname)
+        }
+        catch {}
+      }
+    }).catch(() => {})
+  }, [])
+
+  function persist(next: CaptureRule[]) {
+    setRules(next)
+    sendMessage('set-capture-disable-rules', { rules: next })
+  }
+
+  function addRule() {
+    const url = draftUrl.trim()
+    if (!url || draftExtIds.length === 0)
+      return
+    persist([...rules, { url, extIds: draftExtIds }])
+    setDraftExtIds([])
+  }
+
+  function nameOf(id: string) {
+    return extensions.find(ext => ext.id === id)?.name ?? id
+  }
+
+  return (
+    <div className="mb-4">
+      <div className="text-lg font-semibold mb-1">{t('capture-cleanup-title')}</div>
+      <p className="text-xs text-muted-foreground mb-3">{t('capture-cleanup-desc')}</p>
+
+      {rules.length > 0 && (
+        <div className="space-y-2 mb-3">
+          {rules.map((rule, i) => (
+            <div key={i} className="flex items-start justify-between rounded-md border border-border p-2 text-sm">
+              <div className="min-w-0">
+                <div className="font-mono text-xs break-all">{rule.url}</div>
+                <div className="text-muted-foreground break-all">{rule.extIds.map(nameOf).join(', ')}</div>
+              </div>
+              <button
+                type="button"
+                className="ml-2 shrink-0 text-muted-foreground hover:text-destructive"
+                onClick={() => persist(rules.filter((_, idx) => idx !== i))}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-2 rounded-md border border-border p-2">
+        <Label className="text-xs">{t('capture-cleanup-site')}</Label>
+        <Input value={draftUrl} placeholder="v2ex.com" onChange={e => setDraftUrl(e.target.value)} />
+        <Label className="text-xs">{t('capture-cleanup-extensions')}</Label>
+        {extensions.length === 0
+          ? <div className="text-xs text-muted-foreground">{t('capture-cleanup-empty')}</div>
+          : (
+              <div className="max-h-32 space-y-1 overflow-auto">
+                {extensions.map(ext => (
+                  <div key={ext.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`draft-${ext.id}`}
+                      checked={draftExtIds.includes(ext.id)}
+                      onCheckedChange={checked => setDraftExtIds(prev => checked === true ? [...prev, ext.id] : prev.filter(x => x !== ext.id))}
+                    >
+                    </Checkbox>
+                    <Label htmlFor={`draft-${ext.id}`} className="text-sm leading-none">{ext.name}</Label>
+                  </div>
+                ))}
+              </div>
+            )}
+        <Button
+          className="w-full"
+          size="sm"
+          disabled={!draftUrl.trim() || draftExtIds.length === 0}
+          onClick={addRule}
+        >
+          {t('capture-cleanup-add')}
+        </Button>
       </div>
     </div>
   )

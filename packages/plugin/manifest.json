@@ -74,7 +74,8 @@
     "activeTab",
     "storage",
     "tabs",
-    "scripting"
+    "scripting",
+    "management"
   ],
   "web_accessible_resources": [
     {

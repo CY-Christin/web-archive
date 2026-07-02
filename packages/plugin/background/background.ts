@@ -3,7 +3,7 @@ import '~/lib/browser-polyfill.min.js'
 import '~/lib/single-file-background.js'
 import { onMessage } from 'webext-bridge/background'
 import { isNotNil } from '@web-archive/shared/utils'
-import { clearFinishedTaskList, createAndRunTask, getTaskList } from './processor'
+import { clearFinishedTaskList, createAndRunTask, getCaptureDisableRules, getTaskList } from './processor'
 import { checkLoginStatus, getCacheLoginStatus, resetLoginStatus } from './login'
 
 Browser.runtime.onInstalled.addListener(async () => {
@@ -176,6 +176,25 @@ onMessage('scrape-available', async ({ data: { tabId } }) => {
   catch (e) {
     return { available: false }
   }
+})
+
+onMessage('get-manageable-extensions', async () => {
+  const all = await Browser.management.getAll()
+  const selfId = Browser.runtime.id
+  const extensions = all
+    .filter(ext => ext.type === 'extension' && ext.id !== selfId)
+    .map(ext => ({ id: ext.id, name: ext.name, enabled: ext.enabled }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+  return { extensions }
+})
+
+onMessage('get-capture-disable-rules', async () => {
+  return { rules: await getCaptureDisableRules() }
+})
+
+onMessage('set-capture-disable-rules', async ({ data: { rules } }) => {
+  await Browser.storage.local.set({ captureDisableRules: rules })
+  return { success: true }
 })
 
 onMessage('get-ai-tag-config', async () => {

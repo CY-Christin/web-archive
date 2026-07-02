@@ -29,6 +29,11 @@ export interface SingleFileSetting {
   blockScripts: boolean
   blockAudios: boolean
   blockVideos: boolean
+  // Web fonts (esp. full CJK woff2) can be several MB each and get inlined once
+  // per @font-face weight, dwarfing the actual content — a V2EX thread inlined 73
+  // fonts ≈ 164MB. Skip them; archived text falls back to system fonts, which is
+  // fine for a reading archive.
+  blockFonts?: boolean
   compressHTML: boolean
   removeAlternativeFonts: boolean
   removeAlternativeMedias: boolean
@@ -36,6 +41,11 @@ export interface SingleFileSetting {
   groupDuplicateImages: boolean
   loadDeferredImages?: boolean
   loadDeferredImagesMaxIdleTime?: number
+  // Skip inlining any single resource larger than `maxResourceSize` MB. Keeps a
+  // pathological page from ballooning past the extension messaging limit and
+  // bloating R2 storage.
+  maxResourceSizeEnabled?: boolean
+  maxResourceSize?: number
   onprogress?: (data: ProgressData) => void
 }
 
@@ -59,6 +69,7 @@ export async function getCurrentPageData(singleFileSetting?: SingleFileSetting) 
     blockScripts: true,
     blockAudios: true,
     blockVideos: true,
+    blockFonts: true,
     compressHTML: true,
     removeAlternativeFonts: true,
     removeAlternativeMedias: true,
@@ -66,6 +77,8 @@ export async function getCurrentPageData(singleFileSetting?: SingleFileSetting) 
     groupDuplicateImages: true,
     loadDeferredImages: true,
     loadDeferredImagesMaxIdleTime: 1500,
+    maxResourceSizeEnabled: true,
+    maxResourceSize: 10,
     ...(singleFileSetting ?? {}),
   })
 

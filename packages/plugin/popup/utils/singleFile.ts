@@ -12,6 +12,7 @@ export function getSingleFileSetting() {
       blockScripts: true,
       blockAudios: true,
       blockVideos: true,
+      blockFonts: true,
       compressHTML: true,
       removeAlternativeFonts: true,
       removeAlternativeMedias: true,
@@ -19,6 +20,8 @@ export function getSingleFileSetting() {
       groupDuplicateImages: true,
       loadDeferredImagesMaxIdleTime: 1500,
       loadDeferredImages: true,
+      maxResourceSizeEnabled: true,
+      maxResourceSize: 10,
     }
   }
   return JSON.parse(setting) as SingleFileSetting

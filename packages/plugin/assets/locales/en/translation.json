@@ -58,5 +58,11 @@
   "already-archived": "This URL is already archived. When saved:",
   "save-mode-version": "Save as new version",
   "save-mode-overwrite": "Overwrite existing",
-  "save-mode-new": "Save as new entry"
+  "save-mode-new": "Save as new entry",
+  "capture-cleanup-title": "Disable extensions while capturing",
+  "capture-cleanup-desc": "On matching sites, turn these extensions off while saving (the page reloads), then turn them back on. Use it for \"beautifier\" extensions whose styles break the saved copy.",
+  "capture-cleanup-site": "Site (regex matched against the URL)",
+  "capture-cleanup-extensions": "Extensions to disable",
+  "capture-cleanup-add": "Add rule",
+  "capture-cleanup-empty": "No installed extensions found"
 }

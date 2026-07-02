@@ -58,5 +58,11 @@
   "already-archived": "该网址已存档，再次保存时：",
   "save-mode-version": "存为新版本",
   "save-mode-overwrite": "覆盖原有",
-  "save-mode-new": "另存为新条目"
+  "save-mode-new": "另存为新条目",
+  "capture-cleanup-title": "抓取时临时禁用扩展",
+  "capture-cleanup-desc": "在匹配的网站上，保存时临时关闭这些扩展（页面会刷新一次），抓完自动恢复。适合会改样式、导致存档错乱的“美化”类扩展。",
+  "capture-cleanup-site": "网站（对 URL 做正则匹配）",
+  "capture-cleanup-extensions": "要禁用的扩展",
+  "capture-cleanup-add": "添加规则",
+  "capture-cleanup-empty": "没有检测到已安装的扩展"
 }
