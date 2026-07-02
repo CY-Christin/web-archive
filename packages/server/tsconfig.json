@@ -9,7 +9,8 @@
       "vite/client"
     ],
     "strict": true,
-    "outDir": "./dist/server"
+    "outDir": "./dist/server",
+    "skipLibCheck": true
   },
   "include": ["*.ts", "./src/**/*.ts"]
 }

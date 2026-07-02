@@ -111,7 +111,6 @@ app.post(
       }
       else {
         const res = await c.env.AI.run(
-          // @ts-expect-error model is a user-supplied string
           model,
           { messages: [{ role: 'user', content: '你好' }] },
         )
@@ -181,7 +180,6 @@ app.post(
 
     try {
       const res = await c.env.AI.run(
-        // @ts-expect-error use BaseAiTextGenerationModels to check model? or use type assertion?
         model,
         {
           messages: buildGenerateTagMessage({ title, pageDesc, tagLanguage, preferredTags }),
@@ -192,7 +190,7 @@ app.post(
         if (res instanceof ReadableStream) {
           throw new TypeError('Failed to parse response stream')
         }
-        if (res.response === undefined) {
+        if (typeof res.response !== 'string') {
           throw new TypeError('Failed to parse response, please try again or change model')
         }
         const { tags } = JSON.parse(res.response)
