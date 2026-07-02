@@ -1,19 +1,18 @@
 FROM node:24-alpine AS build
 
-RUN npm install -g pnpm@9
-
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json package-lock.json ./
 COPY packages/server/package.json packages/server/
 COPY packages/web/package.json packages/web/
 COPY packages/shared/package.json packages/shared/
+COPY packages/plugin/package.json packages/plugin/
 
-RUN pnpm install --frozen-lockfile
+RUN npm ci
 
 COPY . .
 
-RUN pnpm build:service
+RUN npm run build:service
 
 
 FROM node:24-alpine

@@ -18,18 +18,18 @@
 
 ## 环境搭建
 
-首先需要安装 node.js (v20+) 和 pnpm。
+首先需要安装 node.js (v20+)，包管理使用自带的 npm。
 
 ### 服务开发
 
-- Fork 代码后，使用 pnpm install 安装依赖。
-- 执行 `pnpm init:local` 初始化本地环境。
-- 执行 `pnpm dev:server` 启动后端服务。
-- 执行 `pnpm dev:web` 启动前端服务。
+- Fork 代码后，使用 `npm install` 安装依赖。
+- 执行 `npm run init:local` 初始化本地环境。
+- 执行 `npm run dev:server` 启动后端服务。
+- 执行 `npm run dev:web` 启动前端服务。
 
 ### 浏览器插件开发
 
-- 执行 `pnpm dev:plugin` 启动浏览器插件开发环境。
+- 执行 `npm run dev:plugin` 启动浏览器插件开发环境。
 
 ## 提交代码
 

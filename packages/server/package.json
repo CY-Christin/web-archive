@@ -16,7 +16,7 @@
     "@hono/vite-cloudflare-pages": "^0.4.1",
     "@hono/vite-dev-server": "^0.12.1",
     "@types/bcryptjs": "^2.4.6",
-    "@web-archive/shared": "workspace:*",
+    "@web-archive/shared": "*",
     "wrangler": "^4.106.0"
   }
 }

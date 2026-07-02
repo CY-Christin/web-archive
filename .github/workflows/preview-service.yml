@@ -20,14 +20,12 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install pnpm
-        run: npm install -g pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: npm ci
 
       - name: Build Service
-        run: pnpm build:service
+        run: npm run build:service
 
       - name: Install wrangler
         run: npm install -g wrangler

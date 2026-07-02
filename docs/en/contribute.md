@@ -19,18 +19,18 @@ This is a TypeScript full-stack project deployed on Cloudflare Pages.
 
 ## Development Environment Setup
 
-First, you need to install node.js (v20+) and pnpm.
+First, you need to install node.js (v20+); the bundled npm is used as the package manager.
 
 ### Service Development
 
-- Fork the code, then use `pnpm install` to install dependencies.
-- Execute `pnpm init:local` to initialize the local environment.
-- Execute `pnpm dev:server` to start the backend service.
-- Execute `pnpm dev:web` to start the frontend service.
+- Fork the code, then use `npm install` to install dependencies.
+- Execute `npm run init:local` to initialize the local environment.
+- Execute `npm run dev:server` to start the backend service.
+- Execute `npm run dev:web` to start the frontend service.
 
 ### Browser Plugin Development
 
-- Execute `pnpm dev:plugin` to start the browser plugin development environment.
+- Execute `npm run dev:plugin` to start the browser plugin development environment.
 
 ## Commit Code
 

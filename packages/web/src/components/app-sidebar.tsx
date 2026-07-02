@@ -162,13 +162,13 @@ function AppSidebar({ isMobile, collapsed, onToggleCollapse, drawerOpen, onClose
           'flex h-screen flex-col border-r border-border bg-sidebar',
           isMobile
             ? cn(
-              'fixed left-0 top-0 z-[60] w-[272px]',
-              drawerOpen ? 'translate-x-0 shadow-[0_24px_70px_-12px_rgba(0,0,0,0.45)]' : '-translate-x-full',
-            )
+                'fixed left-0 top-0 z-[60] w-[272px]',
+                drawerOpen ? 'translate-x-0 shadow-[0_24px_70px_-12px_rgba(0,0,0,0.45)]' : '-translate-x-full',
+              )
             : cn(
-              'sticky top-0 shrink-0 transition-[width] duration-200',
-              collapsed ? 'w-[72px]' : 'w-64',
-            ),
+                'sticky top-0 shrink-0 transition-[width] duration-200',
+                collapsed ? 'w-[72px]' : 'w-64',
+              ),
         )}
       >
         <NewFolderDialog
@@ -207,27 +207,27 @@ function AppSidebar({ isMobile, collapsed, onToggleCollapse, drawerOpen, onClose
           )}
           {isMobile
             ? (
-              <button
-                type="button"
-                aria-label={t('close-menu')}
-                className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-iconbtn bg-surface-2 text-muted-foreground"
-                onClick={onCloseDrawer}
-              >
-                <X size={18} strokeWidth={2} />
-              </button>
+                <button
+                  type="button"
+                  aria-label={t('close-menu')}
+                  className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-iconbtn bg-surface-2 text-muted-foreground"
+                  onClick={onCloseDrawer}
+                >
+                  <X size={18} strokeWidth={2} />
+                </button>
               )
             : (
-              <button
-                type="button"
-                aria-label={t(collapsed ? 'expand-sidebar' : 'collapse-sidebar')}
-                className={cn(
-                  'flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-iconbtn text-faint hover:bg-surface-2 hover:text-foreground',
-                  showLabels && 'ml-auto',
-                )}
-                onClick={onToggleCollapse}
-              >
-                <PanelLeft size={18} strokeWidth={1.75} />
-              </button>
+                <button
+                  type="button"
+                  aria-label={t(collapsed ? 'expand-sidebar' : 'collapse-sidebar')}
+                  className={cn(
+                    'flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-iconbtn text-faint hover:bg-surface-2 hover:text-foreground',
+                    showLabels && 'ml-auto',
+                  )}
+                  onClick={onToggleCollapse}
+                >
+                  <PanelLeft size={18} strokeWidth={1.75} />
+                </button>
               )}
         </div>
 

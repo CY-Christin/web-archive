@@ -39,10 +39,18 @@ export default defineConfig(({ command }) => ({
           return 'assets/[name]-[hash][extname]'
         },
         chunkFileNames: 'assets/[name]-[hash].js',
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'radix-ui': ['@radix-ui/react-checkbox', '@radix-ui/react-collapsible', '@radix-ui/react-context-menu', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-label', '@radix-ui/react-scroll-area', '@radix-ui/react-select', '@radix-ui/react-separator', '@radix-ui/react-slot', '@radix-ui/react-switch', '@radix-ui/react-tooltip'],
-          'recharts': ['recharts'],
+        // Path-based so it survives installer layout changes (the previous
+        // package-name map silently leaked react-dom into index.js after the
+        // pnpm -> npm move).
+        manualChunks(id: string) {
+          if (!id.includes('node_modules'))
+            return
+          if (/node_modules\/(?:recharts|d3-[^/]+|victory-vendor)\//.test(id))
+            return 'recharts'
+          if (id.includes('node_modules/@radix-ui/'))
+            return 'radix-ui'
+          if (/node_modules\/(?:react|react-dom|react-router|react-router-dom|scheduler)\//.test(id))
+            return 'react-vendor'
         },
       },
     },

@@ -20,15 +20,12 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install pnpm
-        run: |
-          npm install -g pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: npm ci
 
       - name: Build plugin
-        run: pnpm build:plugin
+        run: npm run build:plugin
 
       - name: Zip extension folder
         run: |
