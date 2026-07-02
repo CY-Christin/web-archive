@@ -14,6 +14,7 @@ import {
 import { LINK_STATUS_META } from './link-status'
 import { getAllFolder } from '~/data/folder'
 import emitter from '~/utils/emitter'
+import { tagLabel } from '~/utils/tag'
 
 const LINK_STATUS_OPTIONS: LinkStatus[] = ['live', 'dead', 'redirect']
 
@@ -184,7 +185,7 @@ function ArchiveFilterBar({
           className="flex max-w-[220px] items-center gap-1.5 rounded-full bg-accent-soft px-[13px] py-[5px] font-mono text-[11.5px] text-primary"
           onClick={onClearTag}
         >
-          <span className="min-w-0 truncate">{activeTag.name}</span>
+          <span className="min-w-0 truncate">{tagLabel(activeTag)}</span>
           <X size={12} strokeWidth={2} className="shrink-0" />
         </button>
       )}

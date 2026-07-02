@@ -17,6 +17,7 @@ import { deleteTag } from '~/data/tag'
 import TagContext from '~/store/tag'
 import emitter from '~/utils/emitter'
 import { logOut } from '~/utils/router'
+import { tagLabel } from '~/utils/tag'
 
 // The backend is adding pageCount to GET /folders/all; render it only when present.
 type SidebarFolder = Folder & { pageCount?: number }
@@ -320,7 +321,7 @@ function AppSidebar({ isMobile, collapsed, onToggleCollapse, drawerOpen, onClose
                         className="max-w-full truncate rounded-full border border-border bg-surface-2 px-2.5 py-1 font-mono text-[11.5px] text-muted-foreground hover:border-primary hover:text-primary"
                         onClick={() => handleNavigate(`/archive?tag=${tag.id}`)}
                       >
-                        {tag.name}
+                        {tagLabel(tag)}
                       </button>
                     </ContextMenuTrigger>
                     <ContextMenuContent className={contextMenuContentClass}>

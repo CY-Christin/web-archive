@@ -6,6 +6,7 @@ import ScreenshotView from './screenshot-view'
 import { LinkStatusPill } from './link-status'
 import TagContext from '~/store/tag'
 import { formatLocalDate } from '~/utils/date'
+import { tagLabel } from '~/utils/tag'
 
 // List rows use a tighter 8px/16px stripe period than cards (per the mock).
 const LIST_STRIPES = 'repeating-linear-gradient(135deg, var(--surface-2), var(--surface-2) 8px, hsl(var(--background)) 8px, hsl(var(--background)) 16px)'
@@ -62,7 +63,7 @@ function ListView({ pages, onItemClick, onDelete }: ListViewProps) {
               <div className="hidden shrink-0 items-center gap-1.5 desk:flex">
                 {tags.map(tag => (
                   <span key={tag.id} className="rounded-full bg-accent-soft px-[9px] py-[2px] font-mono text-[11px] text-primary">
-                    {tag.name}
+                    {tagLabel(tag)}
                   </span>
                 ))}
               </div>

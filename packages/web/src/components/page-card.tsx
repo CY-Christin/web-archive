@@ -13,6 +13,7 @@ import { updatePageShowcase } from '~/data/page'
 import TagContext from '~/store/tag'
 import { Link } from '~/router'
 import { formatLocalDate } from '~/utils/date'
+import { tagLabel } from '~/utils/tag'
 
 // Diagonal-stripe thumbnail placeholder from the design mock (11px/22px period).
 // --background is an HSL triplet token, hence the hsl() wrapper.
@@ -134,7 +135,7 @@ function Comp({ page, variant = 'archive', onDelete, onEdited }: PageCardProps) 
             <div className="flex flex-wrap gap-1.5">
               {bindTags.map(tag => (
                 <span key={tag.id} className="rounded-full bg-accent-soft px-2 py-[2px] font-mono text-[11px] text-primary">
-                  {tag.name}
+                  {tagLabel(tag)}
                 </span>
               ))}
             </div>

@@ -1,6 +1,9 @@
+import { useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { SearchMatchType, SearchResultItem } from '~/data/page'
 import { LinkStatusDot } from '~/components/link-status'
+import TagContext from '~/store/tag'
+import { tagLabel } from '~/utils/tag'
 
 // Server snippet windows are capped at 46 chars before / 92 chars after the
 // match and returned raw — hitting a cap means the text was cut there, so the
@@ -51,6 +54,10 @@ interface SearchResultCardProps {
 function SearchResultCard({ item, onClick }: SearchResultCardProps) {
   const { t } = useTranslation()
 
+  // The search API returns tag names only; the emoji icons live in tagCache.
+  const { tagCache } = useContext(TagContext)
+  const iconByName = useMemo(() => new Map((tagCache ?? []).map(tag => [tag.name, tag.icon])), [tagCache])
+
   const hasSnippet = (item.matchType === 'content' && item.snippet)
     || item.pageDesc.length > 0
 
@@ -79,7 +86,7 @@ function SearchResultCard({ item, onClick }: SearchResultCardProps) {
               key={tag}
               className="rounded-full bg-surface-2 px-2 py-[2px] font-mono text-[11px] text-muted-foreground"
             >
-              {tag}
+              {tagLabel({ name: tag, icon: iconByName.get(tag) })}
             </span>
           ))}
         </div>
