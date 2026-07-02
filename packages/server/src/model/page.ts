@@ -311,6 +311,15 @@ async function updatePage(DB: D1Database, options: UpdatePageOptions) {
   return result.every(r => r.success)
 }
 
+// Overwrite just the description (used by the post-upload AI auto-description).
+// Keeps the FTS pageDesc column in sync; affects 0 rows if not yet indexed.
+async function updatePageDescription(DB: D1Database, pageId: number, pageDesc: string) {
+  const updatePageSql = DB.prepare(`UPDATE pages SET pageDesc = ? WHERE id = ?`).bind(pageDesc, pageId)
+  const updateFtsSql = DB.prepare(`UPDATE pages_fts SET pageDesc = ? WHERE rowid = ?`).bind(pageDesc, pageId)
+  const result = await DB.batch([updatePageSql, updateFtsSql])
+  return result.every(r => r.success)
+}
+
 // Archive the current content of a page into page_versions (called before the
 // page row is overwritten with a newer capture in "new version" save mode).
 async function insertPageVersion(DB: D1Database, page: Pick<Page, 'id' | 'title' | 'pageDesc' | 'contentUrl' | 'screenshotId' | 'createdAt'>) {
@@ -385,6 +394,7 @@ export {
   queryPagesForReindex,
   insertPageVersion,
   updatePageContent,
+  updatePageDescription,
   queryPageVersions,
   getPageVersionById,
 }

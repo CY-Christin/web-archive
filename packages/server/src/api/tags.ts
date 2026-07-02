@@ -1,4 +1,4 @@
-import { buildGenerateTagMessage, generateTagByOpenAI, isNil, isNumberString } from '@web-archive/shared/utils'
+import { buildGenerateTagMessage, generateTagByOpenAI, isNil, isNumberString, testOpenAIConnection } from '@web-archive/shared/utils'
 import { Hono } from 'hono'
 import { validator } from 'hono/validator'
 import { z } from 'zod'
@@ -83,6 +83,46 @@ app.delete(
     }
 
     return c.json(result.error(500, 'Failed to delete tag'))
+  },
+)
+
+app.post(
+  '/test_connection',
+  validator('json', (value, c) => {
+    const schema = z.object({
+      model: z.string({ message: 'Model name is required' }).min(1, { message: 'Model name is required' }),
+      type: z.enum(['cloudflare', 'openai']).optional(),
+      baseUrl: z.string().optional(),
+      apiKey: z.string().optional(),
+    }).refine(
+      v => v.type !== 'openai' || (!!v.baseUrl && !!v.apiKey),
+      { message: 'Base URL and API Key are required for the OpenAI provider' },
+    )
+    const parsed = schema.safeParse(value)
+    if (!parsed.success)
+      return c.json(result.error(400, parsed.error.errors[0]?.message ?? 'Invalid request'))
+    return parsed.data
+  }),
+  async (c) => {
+    const { model, type, baseUrl, apiKey } = c.req.valid('json')
+    try {
+      if (type === 'openai') {
+        await testOpenAIConnection({ model, baseUrl: baseUrl as string, apiKey: apiKey as string })
+      }
+      else {
+        const res = await c.env.AI.run(
+          // @ts-expect-error model is a user-supplied string
+          model,
+          { messages: [{ role: 'user', content: '你好' }] },
+        )
+        if (!res)
+          throw new Error('No response from Workers AI')
+      }
+      return c.json(result.success(null))
+    }
+    catch (error) {
+      return c.json(result.error(500, error instanceof Error ? error.message : 'Connection test failed'))
+    }
   },
 )
 

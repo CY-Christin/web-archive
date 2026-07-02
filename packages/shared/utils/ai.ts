@@ -70,6 +70,131 @@ export function joinCompletionsUrl(baseUrl: string): string {
   return `${trimmed}/chat/completions`
 }
 
+// Build the chat messages for summarizing a page into a short bookmark description.
+export function buildDescriptionMessage(props: { title: string, content: string, tagLanguage: string }) {
+  const lang = props.tagLanguage === 'zh' ? 'Chinese' : 'English'
+  return [
+    {
+      role: 'system' as const,
+      content: `Summarize the web page into a concise ${lang} description for a bookmark: one or two sentences, no more than 60 words, capturing what the page is about. Return only the description text — no quotes, no labels, no explanation.`,
+    },
+    {
+      role: 'user' as const,
+      content: JSON.stringify({ title: props.title, content: props.content.slice(0, 6000) }),
+    },
+  ]
+}
+
+export async function generateDescriptionByOpenAI(props: { model: string, baseUrl: string, apiKey: string, title: string, content: string, tagLanguage: string }): Promise<string> {
+  const res = await fetch(joinCompletionsUrl(props.baseUrl), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${props.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: props.model,
+      messages: buildDescriptionMessage(props),
+      max_tokens: 200,
+    }),
+  })
+  if (!res.ok) {
+    const content = await res.json().catch(() => null) as { error?: { message?: string } } | null
+    throw new Error(content?.error?.message ?? `Request failed with status ${res.status}`)
+  }
+  const data = await res.json() as { choices: [{ message: { content: string } }] }
+  return (data.choices[0]?.message?.content ?? '').trim()
+}
+
+// Build the chat messages for tagging a page, where every tag also carries a
+// fitting emoji. Reuses `preferredTags` so the model favours the existing tag
+// vocabulary instead of inventing near-duplicates.
+export function buildTagWithIconMessage(props: { title: string, content: string, tagLanguage: string, preferredTags: string[] }) {
+  const lang = props.tagLanguage === 'zh' ? 'Chinese' : 'English'
+  const prefer = props.preferredTags.length > 0 ? props.preferredTags.join(', ') : '(none yet)'
+  return [
+    {
+      role: 'system' as const,
+      content: `Assign 2 to 4 tags describing the web page. Rules:
+1. Tag names in ${lang}; keep technical terms, abbreviations and brand names in their original form.
+2. Tags are concise content keywords, not sentences or explanations.
+3. Strongly prefer reusing these existing tags when any of them fit, before inventing new ones: [${prefer}].
+4. Give every tag exactly one emoji that fits its meaning.
+5. Return ONLY compact JSON: {"tags":[{"name":"tag","icon":"🙂"}]}. No other text.`,
+    },
+    {
+      role: 'user' as const,
+      content: JSON.stringify({ title: props.title, content: props.content.slice(0, 6000) }),
+    },
+  ]
+}
+
+// Parse the {"tags":[{name,icon}]} payload defensively (models add stray text,
+// return empty, or get truncated — never throw, just yield no tags).
+export function parseTagsWithIcon(raw: string): Array<{ name: string, icon: string }> {
+  const start = raw.indexOf('{')
+  const end = raw.lastIndexOf('}')
+  if (start === -1 || end <= start)
+    return []
+  let parsed: { tags?: Array<{ name?: string, icon?: string }> }
+  try {
+    parsed = JSON.parse(raw.slice(start, end + 1))
+  }
+  catch {
+    return []
+  }
+  if (!parsed?.tags || !Array.isArray(parsed.tags))
+    return []
+  return parsed.tags
+    .filter(t => t && typeof t.name === 'string' && t.name.trim())
+    .slice(0, 5)
+    .map(t => ({ name: t.name!.trim(), icon: typeof t.icon === 'string' ? t.icon.trim().slice(0, 16) : '' }))
+}
+
+export async function generateTagsWithIconByOpenAI(props: { model: string, baseUrl: string, apiKey: string, title: string, content: string, tagLanguage: string, preferredTags: string[] }): Promise<Array<{ name: string, icon: string }>> {
+  const res = await fetch(joinCompletionsUrl(props.baseUrl), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${props.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: props.model,
+      messages: buildTagWithIconMessage(props),
+      max_tokens: 400,
+      // Force complete, valid JSON (avoids truncated/preamble output that fails to parse).
+      response_format: { type: 'json_object' },
+    }),
+  })
+  if (!res.ok) {
+    const content = await res.json().catch(() => null) as { error?: { message?: string } } | null
+    throw new Error(content?.error?.message ?? `Request failed with status ${res.status}`)
+  }
+  const data = await res.json() as { choices: [{ message: { content: string } }] }
+  return parseTagsWithIcon(data.choices[0]?.message?.content ?? '')
+}
+
+// Lightweight connectivity check: send a trivial "你好" and confirm the endpoint
+// answers. Avoids the full tag-generation round-trip just to verify credentials.
+export async function testOpenAIConnection(props: { model: string, baseUrl: string, apiKey: string }): Promise<void> {
+  const res = await fetch(joinCompletionsUrl(props.baseUrl), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${props.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: props.model,
+      messages: [{ role: 'user', content: '你好' }],
+      max_tokens: 5,
+    }),
+  })
+  if (!res.ok) {
+    const content = await res.json().catch(() => null) as { error?: { message?: string } } | null
+    throw new Error(content?.error?.message ?? `Request failed with status ${res.status}`)
+  }
+}
+
 export async function generateTagByOpenAI(props: GenerateTagProps): Promise<Array<string>> {
   if (props.type !== 'openai') {
     throw new Error('Invalid AI tag config')

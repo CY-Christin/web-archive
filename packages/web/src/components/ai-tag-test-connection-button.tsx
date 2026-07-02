@@ -6,17 +6,22 @@ import { useRequest } from 'ahooks'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@web-archive/shared/components/tooltip'
 import type { AITagConfig } from '@web-archive/shared/types'
 import { useTranslation } from 'react-i18next'
-import { generateTag } from '~/data/tag'
+import { testAIConnection } from '~/data/tag'
 
 interface Props {
   config: AITagConfig
   onValidate: () => Promise<boolean>
 }
 
-// Always run through the server so OpenAI-compatible endpoints (OpenAI / DeepSeek / custom)
-// aren't blocked by browser CORS and the API key never leaves the server.
+// Lightweight "你好" probe through the server (avoids browser CORS + keeps the key
+// server-side). Just verifies the endpoint/model/key answer, not a full tag run.
 async function generateTagByConfig(config: GenerateTagProps) {
-  return await generateTag(config)
+  return await testAIConnection({
+    model: config.model,
+    type: config.type,
+    baseUrl: config.baseUrl,
+    apiKey: config.apiKey,
+  })
 }
 
 function AITagTestConnectionButton({ config, onValidate }: Props) {

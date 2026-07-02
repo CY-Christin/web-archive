@@ -37,9 +37,22 @@ function generateTag(body: {
   })
 }
 
+function testAIConnection(body: {
+  model: string
+  type?: 'cloudflare' | 'openai'
+  baseUrl?: string
+  apiKey?: string
+}): Promise<null> {
+  return fetcher<null>('/tags/test_connection', {
+    method: 'POST',
+    body,
+  })
+}
+
 export {
   getAllTag,
   deleteTag,
   updateTag,
   generateTag,
+  testAIConnection,
 }

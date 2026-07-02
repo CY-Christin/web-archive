@@ -128,6 +128,31 @@ async function updateBindPageByTagName(
   return updateResult.every(result => result.success)
 }
 
+async function getAllTagNames(DB: D1Database): Promise<string[]> {
+  const res = await DB.prepare(`SELECT name FROM tags`).all<{ name: string }>()
+  return res.results.map(r => r.name)
+}
+
+// Bind a page to AI-generated tags, creating missing tags with their emoji icon.
+// Existing tags keep their current icon (COALESCE), so this never clobbers icons
+// a user already set.
+async function bindPageTagsWithIcon(DB: D1Database, pageId: number, tags: Array<{ name: string, icon: string }>) {
+  const clean = tags.filter(t => t.name?.trim())
+  if (clean.length === 0)
+    return true
+
+  const stmt = DB.prepare(`
+    INSERT INTO tags (name, pageIdDict, icon) VALUES (?, ?, ?)
+      ON CONFLICT(name) DO UPDATE SET
+        pageIdDict = json_patch(pageIdDict, excluded.pageIdDict),
+        icon = COALESCE(NULLIF(icon, ''), excluded.icon)
+  `)
+  const bindJson = JSON.stringify({ [String(pageId)]: pageId })
+  const commands = clean.map(t => stmt.bind(t.name.trim(), bindJson, t.icon?.trim() || null))
+  const res = await DB.batch(commands)
+  return res.every(r => r.success)
+}
+
 function pageIdsToBindDictString(pageIds: Array<number>) {
   const dict = pageIds.reduce((acc, cur) => {
     acc[cur.toString()] = cur
@@ -152,5 +177,7 @@ export {
   deleteTagById,
   updateBindPageByTagName,
   generateUpdateTagSql,
+  getAllTagNames,
+  bindPageTagsWithIcon,
   TagBindRecord,
 }
