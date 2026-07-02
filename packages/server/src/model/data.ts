@@ -24,6 +24,27 @@ async function getHomeChartData(DB: D1Database) {
   }
 }
 
+// R2 keys owned by page HTML snapshots vs screenshots, for classifying bucket
+// usage. Includes soft-deleted pages and archived versions — their objects are
+// still in the bucket. Keys owned by neither (e.g. other projects sharing the
+// bucket) are counted only into the grand totals by the caller.
+async function getBucketKeyOwners(DB: D1Database) {
+  const [pageRows, versionRows] = await DB.batch<{ contentUrl: string | null, screenshotId: string | null }>([
+    DB.prepare(`SELECT contentUrl, screenshotId FROM pages`),
+    DB.prepare(`SELECT contentUrl, screenshotId FROM page_versions`),
+  ])
+  const contentUrls = new Set<string>()
+  const screenshotIds = new Set<string>()
+  for (const row of [...pageRows.results, ...versionRows.results]) {
+    if (row.contentUrl)
+      contentUrls.add(row.contentUrl)
+    if (row.screenshotId)
+      screenshotIds.add(row.screenshotId)
+  }
+  return { contentUrls, screenshotIds }
+}
+
 export {
   getHomeChartData,
+  getBucketKeyOwners,
 }

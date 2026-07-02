@@ -49,6 +49,22 @@ async function selectAllFolders(DB: D1Database) {
   return sqlResult.results
 }
 
+// Folder list plus the number of non-deleted pages in each (sidebar counts).
+async function selectAllFoldersWithPageCount(DB: D1Database) {
+  const sql = `
+    SELECT
+      f.*,
+      (SELECT COUNT(*) FROM pages p WHERE p.folderId = f.id AND p.isDeleted = 0) AS pageCount
+    FROM folders f
+    WHERE f.isDeleted == 0
+  `
+  const sqlResult = await DB.prepare(sql).all<Folder & { pageCount: number }>()
+  if (sqlResult.error) {
+    throw sqlResult.error
+  }
+  return sqlResult.results
+}
+
 async function deleteFolderById(DB: D1Database, id: number) {
   const [folderResult, pageResult] = await DB.batch([
     DB.prepare(`
@@ -129,6 +145,7 @@ export {
   insertFolder,
   updateFolder,
   selectAllFolders,
+  selectAllFoldersWithPageCount,
   getFolderById,
   queryDeletedFolders,
   selectDeletedFolderTotalCount,

@@ -4,12 +4,12 @@ import { isNil, isNumberString } from '@web-archive/shared/utils'
 import { queryPage } from '~/model/page'
 import type { HonoTypeUserInformation } from '~/constants/binding'
 import result from '~/utils/result'
-import { checkFolderExists, deleteFolderById, insertFolder, queryDeletedFolders, selectAllFolders, updateFolder } from '~/model/folder'
+import { checkFolderExists, deleteFolderById, insertFolder, queryDeletedFolders, selectAllFoldersWithPageCount, updateFolder } from '~/model/folder'
 
 const app = new Hono<HonoTypeUserInformation>()
 
 app.get('/all', async (c) => {
-  const folders = await selectAllFolders(c.env.DB)
+  const folders = await selectAllFoldersWithPageCount(c.env.DB)
 
   return c.json(result.success(folders))
 })

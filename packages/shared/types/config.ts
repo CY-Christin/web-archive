@@ -6,6 +6,9 @@ enum ConfigKey {
 type AITagConfig = CloudFlareAITagConfig | OpenAIConfig
 
 interface BaseAITagConfig {
+  // Master switch for AI auto description/tagging on upload.
+  // Absent means enabled (configs saved before this field existed).
+  enabled?: boolean
   tagLanguage: 'en' | 'zh'
   model: string
   preferredTags: string[]

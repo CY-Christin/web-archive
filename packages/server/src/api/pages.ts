@@ -1,17 +1,17 @@
 import { Hono } from 'hono'
 import { validator } from 'hono/validator'
-import { isNil, isNotNil, isNumberString } from '@web-archive/shared/utils'
+import { buildDescriptionMessage, buildTagWithIconMessage, generateDescriptionByOpenAI, generateTagsWithIconByOpenAI, isNil, isNotNil, isNumberString, parseTagsWithIcon } from '@web-archive/shared/utils'
 import { z } from 'zod'
 import type { HonoTypeUserInformation } from '~/constants/binding'
 import result from '~/utils/result'
-import { buildDescriptionMessage, buildTagWithIconMessage, generateDescriptionByOpenAI, generateTagsWithIconByOpenAI, parseTagsWithIcon } from '@web-archive/shared/utils'
-import { clearDeletedPage, deletePageById, getPageById, getPageVersionById, insertPage, insertPageVersion, queryAllPageIds, queryDeletedPage, queryPage, queryPageByUrl, queryPageVersions, queryPagesForReindex, queryRecentSavePage, restorePage, selectPageTotalCount, updatePage, updatePageContent, updatePageDescription, upsertPageFts } from '~/model/page'
+import { clearDeletedPage, deletePageById, filterLivePageIds, getFtsContentByIds, getMaxLastChecked, getPageById, getPageVersionById, getSearchPagesByIds, hardDeletePages, insertPage, insertPageVersion, purgeExpiredDeletedPages, queryAllPageIds, queryDeletedPage, queryPage, queryPageByUrl, queryPageVersions, queryPagesForRecheck, queryPagesForReindex, queryRecentSavePage, restorePage, searchPageIdsByKeyword, selectPageTotalCount, updatePage, updatePageContent, updatePageDescription, updatePagesLinkStatus, upsertPageFts } from '~/model/page'
 import { getFolderById, restoreFolder } from '~/model/folder'
 import { getAITagConfig } from '~/model/store'
 import { getFileFromBucket, removeBucketFile, saveFileToBucket } from '~/utils/file'
 import { htmlToText } from '~/utils/htmlToText'
 import { updateShowcase } from '~/model/showcase'
-import { bindPageTagsWithIcon, getAllTagNames, updateBindPageByTagName } from '~/model/tag'
+import { bindPageTagsWithIcon, getAllTagNames, selectAllTags, updateBindPageByTagName } from '~/model/tag'
+import type { LinkStatus } from '~/sql/types'
 
 const app = new Hono<HonoTypeUserInformation>()
 
@@ -30,6 +30,9 @@ async function autoEnrichPage(env: { DB: D1Database, AI: any }, pageId: number, 
   catch {
     return
   }
+  // enabled is a later addition: configs saved before it exists count as enabled.
+  if (config.enabled === false)
+    return
   if (!config.model)
     return
   if (config.type === 'openai' && (!config.baseUrl || !config.apiKey))
@@ -260,6 +263,14 @@ app.post(
       return c.json(result.error(400, 'Page size should be a number'))
     }
 
+    if (isNotNil(value.linkStatus) && !['live', 'dead', 'redirect'].includes(value.linkStatus)) {
+      return c.json(result.error(400, 'linkStatus should be one of live, dead, redirect'))
+    }
+
+    if (isNotNil(value.sort) && !['newest', 'oldest'].includes(value.sort)) {
+      return c.json(result.error(400, 'sort should be one of newest, oldest'))
+    }
+
     return {
       folderId: isNotNil(value.folderId) ? Number(value.folderId) : undefined,
       tagId: isNotNil(value.tagId) ? Number(value.tagId) : undefined,
@@ -268,19 +279,138 @@ app.post(
       keyword: value.keyword,
       startAt: isNotNil(value.startAt) ? String(value.startAt) : undefined,
       endAt: isNotNil(value.endAt) ? String(value.endAt) : undefined,
+      linkStatus: isNotNil(value.linkStatus) ? value.linkStatus as LinkStatus : undefined,
+      sort: isNotNil(value.sort) ? value.sort as 'newest' | 'oldest' : undefined,
     }
   }),
   async (c) => {
-    const { folderId, pageNumber, pageSize, keyword, tagId, startAt, endAt } = c.req.valid('json')
+    const { folderId, pageNumber, pageSize, keyword, tagId, startAt, endAt, linkStatus, sort } = c.req.valid('json')
 
     const [pages, total] = await Promise.all([
       queryPage(
         c.env.DB,
-        { folderId, pageNumber, pageSize, keyword, tagId, startAt, endAt },
+        { folderId, pageNumber, pageSize, keyword, tagId, startAt, endAt, linkStatus, sort },
       ),
-      selectPageTotalCount(c.env.DB, { folderId, keyword, tagId, startAt, endAt }),
+      selectPageTotalCount(c.env.DB, { folderId, keyword, tagId, startAt, endAt, linkStatus }),
     ])
     return c.json(result.success({ list: pages, total }))
+  },
+)
+
+// Snippet window sizes around the first keyword hit (design spec: ~46 chars of
+// context before, ~92 after; leading/trailing ellipses are added by the frontend).
+const SNIPPET_BEFORE_LEN = 46
+const SNIPPET_AFTER_LEN = 92
+const SNIPPET_FALLBACK_LEN = 140
+
+// Locate the keyword case-insensitively in the page text (body first, then the
+// description — a description hit is still a 'content' match). FTS trigram
+// folds case the same way for ASCII; for exotic foldings where JS can't find
+// the hit again, fall back to the head of the text with an empty match.
+function buildSnippet(content: string, pageDesc: string, keyword: string) {
+  const lowerKeyword = keyword.toLowerCase()
+  for (const text of [content, pageDesc]) {
+    const index = text.toLowerCase().indexOf(lowerKeyword)
+    if (index !== -1) {
+      return {
+        before: text.slice(Math.max(0, index - SNIPPET_BEFORE_LEN), index),
+        match: text.slice(index, index + keyword.length),
+        after: text.slice(index + keyword.length, index + keyword.length + SNIPPET_AFTER_LEN),
+      }
+    }
+  }
+  return { before: '', match: '', after: (content || pageDesc).slice(0, SNIPPET_FALLBACK_LEN) }
+}
+
+// Full-text search across titles, page content and tag names, deduped with
+// matchType priority title > content > tag. `total` is the exact number of
+// distinct matched non-deleted page ids across the three sources (pages that
+// were never FTS-indexed can only surface via tag matches).
+app.post(
+  '/search',
+  validator('json', (value, c) => {
+    const schema = z.object({
+      keyword: z.string({ message: 'Keyword is required' }).trim().min(1, 'Keyword is required'),
+      pageNumber: z.number().int().positive().default(1),
+      pageSize: z.number().int().positive().max(100).default(50),
+    })
+    const parsed = schema.safeParse(value ?? {})
+    if (!parsed.success) {
+      return c.json(result.error(400, parsed.error.errors[0]?.message ?? 'Invalid request'))
+    }
+    return parsed.data
+  }),
+  async (c) => {
+    const { keyword, pageNumber, pageSize } = c.req.valid('json')
+
+    // All tags are needed anyway to attach tag names to every result, so tag
+    // matching is done in JS over the same list instead of a LIKE query.
+    const [titleIds, contentIds, allTags] = await Promise.all([
+      searchPageIdsByKeyword(c.env.DB, keyword, 'title'),
+      searchPageIdsByKeyword(c.env.DB, keyword, 'content'),
+      selectAllTags(c.env.DB),
+    ])
+
+    const lowerKeyword = keyword.toLowerCase()
+    const tagCandidateIds: number[] = []
+    const seenTagPageIds = new Set<number>()
+    for (const tag of allTags) {
+      if (!tag.name.toLowerCase().includes(lowerKeyword))
+        continue
+      for (const pageId of tag.pageIds) {
+        if (!seenTagPageIds.has(pageId)) {
+          seenTagPageIds.add(pageId)
+          tagCandidateIds.push(pageId)
+        }
+      }
+    }
+    // pageIdDict may reference soft-deleted/purged pages; keep only live ones.
+    const tagIds = await filterLivePageIds(c.env.DB, tagCandidateIds)
+
+    const matchTypeById = new Map<number, 'title' | 'content' | 'tag'>()
+    const orderedIds: number[] = []
+    const collect = (ids: number[], matchType: 'title' | 'content' | 'tag') => {
+      for (const id of ids) {
+        if (!matchTypeById.has(id)) {
+          matchTypeById.set(id, matchType)
+          orderedIds.push(id)
+        }
+      }
+    }
+    collect(titleIds, 'title')
+    collect(contentIds, 'content')
+    collect(tagIds, 'tag')
+
+    const total = orderedIds.length
+    const offset = (pageNumber - 1) * pageSize
+    const windowIds = orderedIds.slice(offset, offset + pageSize)
+
+    const pageRows = await getSearchPagesByIds(c.env.DB, windowIds)
+    const pageById = new Map(pageRows.map(page => [page.id, page]))
+
+    // Page text is fetched only for the content matches in this window.
+    const contentMatchedIds = windowIds.filter(id => matchTypeById.get(id) === 'content')
+    const contentRows = await getFtsContentByIds(c.env.DB, contentMatchedIds)
+    const contentById = new Map(contentRows.map(row => [row.id, row.content]))
+
+    const list = windowIds
+      .map((id) => {
+        const page = pageById.get(id)
+        if (isNil(page))
+          return null
+        const matchType = matchTypeById.get(id)!
+        return {
+          ...page,
+          matchType,
+          tags: allTags.filter(tag => tag.pageIds.includes(id)).map(tag => tag.name),
+          ...(matchType === 'content'
+            ? { snippet: buildSnippet(contentById.get(id) ?? '', page.pageDesc, keyword) }
+            : {}),
+        }
+      })
+      .filter(isNotNil)
+
+    return c.json(result.success({ list, total }))
   },
 )
 
@@ -357,6 +487,111 @@ app.post(
     }))
   },
 )
+
+const LINK_CHECK_TIMEOUT_MS = 8000
+// Each probe is 1-2 outbound fetches; with the batch capped at 15 pages this
+// stays far below the Worker's 50-subrequest budget.
+const LINK_CHECK_CONCURRENCY = 5
+const LINK_CHECK_MAX_LIMIT = 15
+
+function classifyLinkStatus(httpStatus: number): LinkStatus {
+  if (httpStatus >= 200 && httpStatus < 300)
+    return 'live'
+  if (httpStatus >= 300 && httpStatus < 400)
+    return 'redirect'
+  return 'dead'
+}
+
+// HEAD first (cheap); fall back to GET when the server rejects HEAD (405/501)
+// or the HEAD attempt itself fails. Redirects are reported, not followed.
+async function probeLink(pageUrl: string): Promise<LinkStatus> {
+  // Only probe web URLs; malformed or non-http(s) strings are 'dead' without
+  // spending any fetches.
+  try {
+    const { protocol } = new URL(pageUrl)
+    if (protocol !== 'http:' && protocol !== 'https:')
+      return 'dead'
+  }
+  catch {
+    return 'dead'
+  }
+  const attempt = (method: 'HEAD' | 'GET') => fetch(pageUrl, {
+    method,
+    redirect: 'manual',
+    signal: AbortSignal.timeout(LINK_CHECK_TIMEOUT_MS),
+  })
+  try {
+    const res = await attempt('HEAD')
+    if (res.status !== 405 && res.status !== 501)
+      return classifyLinkStatus(res.status)
+  }
+  catch {
+    // invalid URL / network error / timeout: retry once with GET below
+  }
+  try {
+    const res = await attempt('GET')
+    return classifyLinkStatus(res.status)
+  }
+  catch {
+    return 'dead'
+  }
+}
+
+// Bounded worker pool; `next++` is race-free because workers only interleave at awaits.
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = Array.from({ length: items.length })
+  let next = 0
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next++
+      results[index] = await fn(items[index])
+    }
+  })
+  await Promise.all(workers)
+  return results
+}
+
+// Manual link-health check over the archive, in bounded batches. Call
+// repeatedly, passing back the returned `cursor`, until `done` is true
+// (same cursor-loop protocol as /reindex).
+app.post(
+  '/recheck',
+  validator('json', (value, c) => {
+    const schema = z.object({
+      folderId: z.number().int().optional(),
+      cursor: z.number().int().nonnegative().default(0),
+      limit: z.number().int().positive().max(LINK_CHECK_MAX_LIMIT).default(10),
+    })
+    const parsed = schema.safeParse(value ?? {})
+    if (!parsed.success) {
+      return c.json(result.error(400, parsed.error.errors[0]?.message ?? 'Invalid request'))
+    }
+    return parsed.data
+  }),
+  async (c) => {
+    const { folderId, cursor, limit } = c.req.valid('json')
+    const pages = await queryPagesForRecheck(c.env.DB, { cursor, limit, folderId })
+
+    const checked = await mapWithConcurrency(pages, LINK_CHECK_CONCURRENCY, async page => ({
+      id: page.id,
+      linkStatus: await probeLink(page.pageUrl),
+    }))
+    const statuses = await updatePagesLinkStatus(c.env.DB, checked)
+
+    return c.json(result.success({
+      checked: pages.length,
+      cursor: pages.length > 0 ? pages[pages.length - 1].id : cursor,
+      done: pages.length < limit,
+      statuses,
+    }))
+  },
+)
+
+// Most recent link probe across all non-deleted pages (for "上次检测" in the toolbar).
+app.get('/link_check_status', async (c) => {
+  const lastChecked = await getMaxLastChecked(c.env.DB)
+  return c.json(result.success({ lastChecked }))
+})
 
 app.post(
   '/query_by_url',
@@ -492,8 +727,44 @@ app.put(
 app.post(
   '/query_deleted',
   async (c) => {
+    // Lazy 30-day retention: purge expired trash before listing, so the
+    // "kept for 30 days" copy stays true without a cron trigger. Best-effort —
+    // a purge failure must not break the trash view.
+    try {
+      await purgeExpiredDeletedPages(c.env.DB, c.env.BUCKET)
+    }
+    catch (error) {
+      console.error('Failed to purge expired deleted pages', error)
+    }
     const pages = await queryDeletedPage(c.env.DB)
     return c.json(result.success(pages))
+  },
+)
+
+// Permanently delete a single soft-deleted page (R2 objects incl. archived
+// versions, FTS row, version rows, page row). Only works on pages in the trash.
+app.delete(
+  '/hard_delete',
+  validator('query', (value, c) => {
+    if (!value.id || Number.isNaN(Number(value.id))) {
+      return c.json(result.error(400, 'ID is required'))
+    }
+    return {
+      id: Number(value.id),
+    }
+  }),
+  async (c) => {
+    const { id } = c.req.valid('query')
+
+    const page = await getPageById(c.env.DB, { id, isDeleted: true })
+    if (isNil(page)) {
+      return c.json(result.error(404, 'Page not found in trash'))
+    }
+
+    if (await hardDeletePages(c.env.DB, c.env.BUCKET, [id])) {
+      return c.json(result.success({ id }))
+    }
+    return c.json(result.error(500, 'Failed to delete page'))
   },
 )
 

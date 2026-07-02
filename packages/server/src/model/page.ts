@@ -1,7 +1,7 @@
 import { isNotNil } from '@web-archive/shared/utils'
 import type { TagBindRecord } from './tag'
 import { generateUpdateTagSql } from './tag'
-import type { Page } from '~/sql/types'
+import type { LinkStatus, Page } from '~/sql/types'
 import { removeBucketFile } from '~/utils/file'
 import { FTS_MIN_KEYWORD_LEN, ftsMatchQuery } from '~/utils/htmlToText'
 
@@ -12,6 +12,7 @@ interface PageQueryFilters {
   // ISO date strings (inclusive) filtering on pages.createdAt.
   startAt?: string
   endAt?: string
+  linkStatus?: LinkStatus
 }
 
 // Build the shared FROM + WHERE for page listing/counting.
@@ -22,7 +23,7 @@ interface PageQueryFilters {
 // The FTS table must be referenced by name (not an alias) in a MATCH clause.
 // Returns whether MATCH was used so callers can order by relevance vs. recency.
 function buildPageQuery(filters: PageQueryFilters, selectClause: string) {
-  const { folderId, keyword, tagId, startAt, endAt } = filters
+  const { folderId, keyword, tagId, startAt, endAt, linkStatus } = filters
   const trimmedKeyword = keyword?.trim()
   const hasKeyword = !!trimmedKeyword
   const useFts = hasKeyword && trimmedKeyword!.length >= FTS_MIN_KEYWORD_LEN
@@ -52,6 +53,11 @@ function buildPageQuery(filters: PageQueryFilters, selectClause: string) {
   if (isNotNil(tagId)) {
     where.push(`p.id IN (SELECT value FROM json_each((SELECT pageIdDict FROM tags WHERE id = ?)))`)
     bindParams.push(tagId)
+  }
+
+  if (isNotNil(linkStatus)) {
+    where.push(`p.linkStatus = ?`)
+    bindParams.push(linkStatus)
   }
 
   // Compare on calendar date via date() so it works regardless of whether
@@ -86,8 +92,8 @@ async function selectAllPageCount(DB: D1Database) {
   return result.count
 }
 
-async function queryPage(DB: D1Database, options: PageQueryFilters & { pageNumber?: number, pageSize?: number }) {
-  const { pageNumber, pageSize } = options
+async function queryPage(DB: D1Database, options: PageQueryFilters & { pageNumber?: number, pageSize?: number, sort?: 'newest' | 'oldest' }) {
+  const { pageNumber, pageSize, sort } = options
   const selectClause = `
     SELECT
       p.id,
@@ -99,12 +105,14 @@ async function queryPage(DB: D1Database, options: PageQueryFilters & { pageNumbe
       p.screenshotId,
       p.createdAt,
       p.updatedAt,
-      p.isShowcased
+      p.isShowcased,
+      p.linkStatus,
+      p.lastChecked
   `
   const { sql: baseSql, bindParams, useFts } = buildPageQuery(options, selectClause)
 
-  // FTS matches are ordered by relevance; plain listing stays newest-first.
-  let sql = `${baseSql} ORDER BY ${useFts ? 'rank' : 'p.createdAt DESC'}`
+  // FTS matches are ordered by relevance; plain listing follows `sort` (newest-first default).
+  let sql = `${baseSql} ORDER BY ${useFts ? 'rank' : `p.createdAt ${sort === 'oldest' ? 'ASC' : 'DESC'}`}`
 
   if (isNotNil(pageNumber) && isNotNil(pageSize)) {
     sql += ` LIMIT ? OFFSET ?`
@@ -152,6 +160,139 @@ async function queryPagesForReindex(DB: D1Database, options: { cursor: number, l
   return result.results
 }
 
+// Pages whose original URL should be probed for link health, walked by
+// ascending id cursor (bounded batches keep each request far below the
+// Worker's 50-subrequest budget).
+async function queryPagesForRecheck(DB: D1Database, options: { cursor: number, limit: number, folderId?: number }) {
+  const { cursor, limit, folderId } = options
+  let sql = `SELECT id, pageUrl FROM pages WHERE isDeleted = 0 AND id > ?`
+  const bindParams: number[] = [cursor]
+  if (isNotNil(folderId)) {
+    sql += ` AND folderId = ?`
+    bindParams.push(folderId)
+  }
+  sql += ` ORDER BY id ASC LIMIT ?`
+  bindParams.push(limit)
+  const result = await DB.prepare(sql).bind(...bindParams).all<Pick<Page, 'id' | 'pageUrl'>>()
+  if (result.error) {
+    throw result.error
+  }
+  return result.results
+}
+
+// Persist probe results, then read the rows back so the response carries the
+// exact lastChecked value D1 stored (CURRENT_TIMESTAMP is computed in SQL).
+async function updatePagesLinkStatus(DB: D1Database, updates: Array<{ id: number, linkStatus: LinkStatus }>) {
+  if (updates.length === 0)
+    return []
+  const stmt = DB.prepare(`UPDATE pages SET linkStatus = ?, lastChecked = CURRENT_TIMESTAMP WHERE id = ?`)
+  await DB.batch(updates.map(update => stmt.bind(update.linkStatus, update.id)))
+
+  const idsJson = JSON.stringify(updates.map(update => update.id))
+  const rows = await DB
+    .prepare(`SELECT id, linkStatus, lastChecked FROM pages WHERE id IN (SELECT value FROM json_each(?))`)
+    .bind(idsJson)
+    .all<Pick<Page, 'id' | 'linkStatus' | 'lastChecked'>>()
+  if (rows.error) {
+    throw rows.error
+  }
+  return rows.results
+}
+
+// Most recent probe time across the archive (null = never checked anything).
+async function getMaxLastChecked(DB: D1Database) {
+  const row = await DB
+    .prepare(`SELECT MAX(lastChecked) as lastChecked FROM pages WHERE isDeleted = 0`)
+    .first<{ lastChecked: string | null }>()
+  return row?.lastChecked ?? null
+}
+
+// Non-deleted page ids matching the keyword in either the title or the body
+// (pageDesc + extracted content), most relevant first. Same >=3-char trigram /
+// short-CJK LIKE split as buildPageQuery; LIKE fallback orders by recency
+// because there is no FTS rank to use.
+async function searchPageIdsByKeyword(DB: D1Database, keyword: string, scope: 'title' | 'content') {
+  const kw = keyword.trim()
+  const useFts = kw.length >= FTS_MIN_KEYWORD_LEN
+  let sql = `SELECT p.id FROM pages p JOIN pages_fts ON p.id = pages_fts.rowid WHERE p.isDeleted = 0 AND `
+  const bindParams: string[] = []
+  if (useFts) {
+    // FTS5 column filter restricts the match to given columns; pageDesc hits
+    // are grouped with content (a description hit is a body hit, not a title hit).
+    sql += `pages_fts MATCH ? ORDER BY rank`
+    bindParams.push(scope === 'title'
+      ? `title : ${ftsMatchQuery(kw)}`
+      : `{pageDesc content} : ${ftsMatchQuery(kw)}`)
+  }
+  else {
+    // Escape LIKE metacharacters so a literal % / _ keyword doesn't wildcard-match everything.
+    const like = `%${kw.replace(/[\\%_]/g, m => `\\${m}`)}%`
+    if (scope === 'title') {
+      sql += `pages_fts.title LIKE ? ESCAPE '\\' ORDER BY p.createdAt DESC`
+      bindParams.push(like)
+    }
+    else {
+      sql += `(pages_fts.pageDesc LIKE ? ESCAPE '\\' OR pages_fts.content LIKE ? ESCAPE '\\') ORDER BY p.createdAt DESC`
+      bindParams.push(like, like)
+    }
+  }
+  const result = await DB.prepare(sql).bind(...bindParams).all<{ id: number }>()
+  if (result.error) {
+    throw result.error
+  }
+  return result.results.map(row => row.id)
+}
+
+// Of the candidate ids (e.g. expanded from tags.pageIdDict, which may contain
+// soft-deleted or purged pages), keep only existing non-deleted ones, newest first.
+async function filterLivePageIds(DB: D1Database, pageIds: number[]) {
+  if (pageIds.length === 0)
+    return []
+  const result = await DB
+    .prepare(`SELECT id FROM pages WHERE isDeleted = 0 AND id IN (SELECT value FROM json_each(?)) ORDER BY createdAt DESC`)
+    .bind(JSON.stringify(pageIds))
+    .all<{ id: number }>()
+  if (result.error) {
+    throw result.error
+  }
+  return result.results.map(row => row.id)
+}
+
+// Page columns for a search-result window (no contentUrl; results link to /page/:id).
+type SearchResultPageRow = Pick<Page, 'id' | 'title' | 'pageUrl' | 'pageDesc' | 'screenshotId' | 'folderId' | 'createdAt' | 'linkStatus' | 'lastChecked'>
+
+async function getSearchPagesByIds(DB: D1Database, pageIds: number[]) {
+  if (pageIds.length === 0)
+    return []
+  const result = await DB
+    .prepare(`
+      SELECT id, title, pageUrl, pageDesc, screenshotId, folderId, createdAt, linkStatus, lastChecked
+      FROM pages
+      WHERE isDeleted = 0 AND id IN (SELECT value FROM json_each(?))
+    `)
+    .bind(JSON.stringify(pageIds))
+    .all<SearchResultPageRow>()
+  if (result.error) {
+    throw result.error
+  }
+  return result.results
+}
+
+// Extracted page text for snippet building (only fetched for content matches
+// in the current result window, so the payload stays bounded).
+async function getFtsContentByIds(DB: D1Database, pageIds: number[]) {
+  if (pageIds.length === 0)
+    return []
+  const result = await DB
+    .prepare(`SELECT rowid as id, content FROM pages_fts WHERE rowid IN (SELECT value FROM json_each(?))`)
+    .bind(JSON.stringify(pageIds))
+    .all<{ id: number, content: string }>()
+  if (result.error) {
+    throw result.error
+  }
+  return result.results
+}
+
 async function queryPageByUrl(DB: D1Database, pageUrl: string) {
   const sql = `SELECT * FROM pages WHERE pageUrl = ? AND isDeleted = 0`
   const result = await DB.prepare(sql).bind(pageUrl).all<Page>()
@@ -178,7 +319,9 @@ async function queryDeletedPage(DB: D1Database) {
       pageDesc,
       createdAt,
       updatedAt,
-      deletedAt
+      deletedAt,
+      linkStatus,
+      lastChecked
     FROM pages
     WHERE isDeleted = 1
     ORDER BY updatedAt DESC
@@ -247,28 +390,54 @@ async function insertPage(DB: D1Database, pageOptions: InsertPageOptions) {
   return insertResult.meta.last_row_id
 }
 
-async function clearDeletedPage(DB: D1Database, BUCKET: R2Bucket) {
-  const pageListSql = `
-    SELECT * FROM pages WHERE isDeleted = 1
-  `
-  const deletePageResult = await DB.prepare(pageListSql).all<Page>()
-  if (deletePageResult.error) {
-    return false
-  }
-  const deleteBucketKeys = deletePageResult.results
-    .map(page => [page.screenshotId, page.contentUrl])
+// Permanently remove pages: their R2 objects (current capture + archived
+// versions), pages_fts rows, page_versions rows and the pages rows themselves.
+// Id lists go through json_each to stay within D1's bound-parameter cap.
+async function hardDeletePages(DB: D1Database, BUCKET: R2Bucket, pageIds: number[]) {
+  if (pageIds.length === 0)
+    return true
+  const idsJson = JSON.stringify(pageIds)
+
+  const [pageRows, versionRows] = await DB.batch<{ contentUrl: string | null, screenshotId: string | null }>([
+    DB.prepare(`SELECT contentUrl, screenshotId FROM pages WHERE id IN (SELECT value FROM json_each(?))`).bind(idsJson),
+    DB.prepare(`SELECT contentUrl, screenshotId FROM page_versions WHERE pageId IN (SELECT value FROM json_each(?))`).bind(idsJson),
+  ])
+  const deleteBucketKeys = [...pageRows.results, ...versionRows.results]
+    .map(row => [row.contentUrl, row.screenshotId])
     .flat()
     .filter(isNotNil)
   await removeBucketFile(BUCKET, deleteBucketKeys)
 
-  // Drop FTS rows for the pages being permanently removed.
-  await deletePageFtsByIds(DB, deletePageResult.results.map(page => page.id))
+  const result = await DB.batch([
+    DB.prepare(`DELETE FROM page_versions WHERE pageId IN (SELECT value FROM json_each(?))`).bind(idsJson),
+    DB.prepare(`DELETE FROM pages_fts WHERE rowid IN (SELECT value FROM json_each(?))`).bind(idsJson),
+    DB.prepare(`DELETE FROM pages WHERE id IN (SELECT value FROM json_each(?))`).bind(idsJson),
+  ])
+  return result.every(r => r.success)
+}
 
-  const sql = `
-    DELETE FROM pages WHERE isDeleted = 1
-  `
-  const result = await DB.prepare(sql).run()
-  return result.success
+async function clearDeletedPage(DB: D1Database, BUCKET: R2Bucket) {
+  const deletePageResult = await DB.prepare(`SELECT id FROM pages WHERE isDeleted = 1`).all<{ id: number }>()
+  if (deletePageResult.error) {
+    return false
+  }
+  return await hardDeletePages(DB, BUCKET, deletePageResult.results.map(page => page.id))
+}
+
+// Trash retention: pages soft-deleted more than 30 days ago are purged for good.
+// Called lazily from the trash listing endpoint (no cron available on Pages).
+// Bounded batch so a huge backlog can't dominate a single trash view; the
+// remainder is picked up by subsequent calls.
+const PURGE_BATCH_SIZE = 50
+async function purgeExpiredDeletedPages(DB: D1Database, BUCKET: R2Bucket) {
+  const expired = await DB
+    .prepare(`SELECT id FROM pages WHERE isDeleted = 1 AND deletedAt < datetime('now', '-30 days') LIMIT ?`)
+    .bind(PURGE_BATCH_SIZE)
+    .all<{ id: number }>()
+  if (expired.error) {
+    throw expired.error
+  }
+  return await hardDeletePages(DB, BUCKET, expired.results.map(page => page.id))
 }
 
 async function queryRecentSavePage(DB: D1Database) {
@@ -385,6 +554,8 @@ export {
   getPageById,
   insertPage,
   clearDeletedPage,
+  hardDeletePages,
+  purgeExpiredDeletedPages,
   queryRecentSavePage,
   selectAllPageCount,
   updatePage,
@@ -392,9 +563,18 @@ export {
   upsertPageFts,
   deletePageFtsByIds,
   queryPagesForReindex,
+  queryPagesForRecheck,
+  updatePagesLinkStatus,
+  getMaxLastChecked,
+  searchPageIdsByKeyword,
+  filterLivePageIds,
+  getSearchPagesByIds,
+  getFtsContentByIds,
   insertPageVersion,
   updatePageContent,
   updatePageDescription,
   queryPageVersions,
   getPageVersionById,
 }
+
+export type { SearchResultPageRow }

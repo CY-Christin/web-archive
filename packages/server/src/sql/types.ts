@@ -6,5 +6,5 @@ type Tag = {
   updatedAt: Date
 }
 
-export type { Page, Folder } from '@web-archive/shared/types/model'
+export type { Page, Folder, LinkStatus } from '@web-archive/shared/types/model'
 export type { Tag }

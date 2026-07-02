@@ -11,12 +11,18 @@ export async function formFileToArrayBuffer(file: File | string) {
   }
 }
 
+// R2's Workers binding caps bulk delete() at 1000 keys per call.
+const R2_DELETE_MAX_KEYS = 1000
+
 export async function removeBucketFile(BUCKET: R2Bucket, ids: string | string[]) {
   if (isNil(ids)) {
     return
   }
 
-  await BUCKET.delete(ids)
+  const keys = Array.isArray(ids) ? ids : [ids]
+  for (let i = 0; i < keys.length; i += R2_DELETE_MAX_KEYS) {
+    await BUCKET.delete(keys.slice(i, i + R2_DELETE_MAX_KEYS))
+  }
 }
 
 export async function saveFileToBucket(BUCKET: R2Bucket, file: File | string) {

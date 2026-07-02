@@ -68,12 +68,15 @@ app.post(
     }
     const cloudflareSchema = z.object({
       type: z.literal('cloudflare'),
+      // Absent = enabled, for configs saved before the switch existed.
+      enabled: z.boolean().optional(),
       tagLanguage: z.enum(['en', 'zh']).default('en'),
       model: z.string(modelError).min(1, modelError),
       preferredTags: z.array(z.string()).default([]),
     })
     const openaiSchema = z.object({
       type: z.literal('openai'),
+      enabled: z.boolean().optional(),
       tagLanguage: z.enum(['en', 'zh']).default('en'),
       model: z.string(modelError).min(1, modelError),
       preferredTags: z.array(z.string()).default([]),
