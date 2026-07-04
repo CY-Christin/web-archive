@@ -71,6 +71,14 @@ export function buildOpenAIAuthHeaders(props: { apiKey?: string, gatewayToken?: 
   return headers
 }
 
+// DeepSeek models think by default (a chain-of-thought precedes the answer), which counts
+// against max_tokens and adds latency while helping nothing for short structured outputs
+// like tags or a one-line description — so disable it. Keyed off the model name because
+// other OpenAI-compatible providers reject unknown body params.
+export function buildModelExtraParams(model: string): Record<string, unknown> {
+  return /deepseek/i.test(model) ? { thinking: { type: 'disabled' } } : {}
+}
+
 // Pull a human-readable message out of a failed response. Handles the OpenAI error shape
 // ({error:{message}}), the Cloudflare API/AI Gateway shape ({errors:[{message}]}), and
 // plain-text bodies (e.g. DeepSeek's bare "Authentication Fails" 401).
@@ -123,6 +131,7 @@ export async function generateDescriptionByOpenAI(props: { model: string, baseUr
       model: props.model,
       messages: buildDescriptionMessage(props),
       max_tokens: 200,
+      ...buildModelExtraParams(props.model),
     }),
   })
   if (!res.ok) {
@@ -187,6 +196,7 @@ export async function generateTagsWithIconByOpenAI(props: { model: string, baseU
       max_tokens: 400,
       // Force complete, valid JSON (avoids truncated/preamble output that fails to parse).
       response_format: { type: 'json_object' },
+      ...buildModelExtraParams(props.model),
     }),
   })
   if (!res.ok) {
@@ -206,6 +216,7 @@ export async function testOpenAIConnection(props: { model: string, baseUrl: stri
       model: props.model,
       messages: [{ role: 'user', content: '你好' }],
       max_tokens: 5,
+      ...buildModelExtraParams(props.model),
     }),
   })
   if (!res.ok) {
@@ -223,6 +234,7 @@ export async function generateTagByOpenAI(props: GenerateTagProps): Promise<Arra
     body: JSON.stringify({
       messages: buildGenerateTagMessage(props),
       model: props.model,
+      ...buildModelExtraParams(props.model),
     }),
   })
 
