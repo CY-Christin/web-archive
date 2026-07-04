@@ -207,7 +207,10 @@ onMessage('get-ai-tag-config', async () => {
   }
 })
 
-onMessage('generate-tag', async ({ data: { title, pageDesc, tagLanguage, preferredTags, model } }) => {
+onMessage('generate-tag', async ({ data }) => {
+  // Forward the provider fields too (type/baseUrl/apiKey/gatewayToken) — without them the
+  // server silently falls back to Workers AI even when an OpenAI-compatible provider is configured.
+  const { title, pageDesc, tagLanguage, preferredTags, model, type, baseUrl, apiKey, gatewayToken } = data as typeof data & { baseUrl?: string, apiKey?: string, gatewayToken?: string }
   const tags = await request('/tags/generate_tag', {
     method: 'POST',
     body: JSON.stringify({
@@ -216,6 +219,10 @@ onMessage('generate-tag', async ({ data: { title, pageDesc, tagLanguage, preferr
       tagLanguage,
       preferredTags,
       model,
+      type,
+      baseUrl,
+      apiKey,
+      gatewayToken,
     }),
     headers: {
       'Content-Type': 'application/json',

@@ -91,12 +91,16 @@ app.post(
   validator('json', (value, c) => {
     const schema = z.object({
       model: z.string({ message: 'Model name is required' }).min(1, { message: 'Model name is required' }),
-      type: z.enum(['cloudflare', 'openai']).optional(),
+      type: z.enum(['cloudflare', 'openai', 'cloudflare-gateway']).optional(),
       baseUrl: z.string().optional(),
       apiKey: z.string().optional(),
+      gatewayToken: z.string().optional(),
     }).refine(
       v => v.type !== 'openai' || (!!v.baseUrl && !!v.apiKey),
       { message: 'Base URL and API Key are required for the OpenAI provider' },
+    ).refine(
+      v => v.type !== 'cloudflare-gateway' || (!!v.baseUrl && !!v.gatewayToken),
+      { message: 'Base URL and Gateway Token are required for the Cloudflare AI Gateway provider' },
     )
     const parsed = schema.safeParse(value)
     if (!parsed.success)
@@ -104,10 +108,10 @@ app.post(
     return parsed.data
   }),
   async (c) => {
-    const { model, type, baseUrl, apiKey } = c.req.valid('json')
+    const { model, type, baseUrl, apiKey, gatewayToken } = c.req.valid('json')
     try {
-      if (type === 'openai') {
-        await testOpenAIConnection({ model, baseUrl: baseUrl as string, apiKey: apiKey as string })
+      if (type === 'openai' || type === 'cloudflare-gateway') {
+        await testOpenAIConnection({ model, baseUrl: baseUrl as string, apiKey, gatewayToken })
       }
       else {
         const res = await c.env.AI.run(
@@ -134,14 +138,19 @@ app.post(
       model: z.string({ message: 'Model name is required' }).min(1, { message: 'Model name is required' }),
       tagLanguage: z.enum(['en', 'zh'], { message: 'Invalid tag language' }),
       preferredTags: z.array(z.string()).default([]),
-      // When type === 'openai' the generation runs server-side against an OpenAI-compatible
-      // endpoint (avoids browser CORS + keeps the key off the client). Omitted/cloudflare uses Workers AI.
-      type: z.enum(['cloudflare', 'openai']).optional(),
+      // When type is 'openai' or 'cloudflare-gateway' the generation runs server-side against an
+      // OpenAI-compatible endpoint (avoids browser CORS + keeps the key off the client).
+      // Omitted/cloudflare uses Workers AI.
+      type: z.enum(['cloudflare', 'openai', 'cloudflare-gateway']).optional(),
       baseUrl: z.string().optional(),
       apiKey: z.string().optional(),
+      gatewayToken: z.string().optional(),
     }).refine(
       v => v.type !== 'openai' || (!!v.baseUrl && !!v.apiKey),
       { message: 'Base URL and API Key are required for the OpenAI provider' },
+    ).refine(
+      v => v.type !== 'cloudflare-gateway' || (!!v.baseUrl && !!v.gatewayToken),
+      { message: 'Base URL and Gateway Token are required for the Cloudflare AI Gateway provider' },
     )
     const parsed = schema.safeParse(value)
     if (!parsed.success) {
@@ -153,13 +162,13 @@ app.post(
     return parsed.data
   }),
   async (c) => {
-    const { title, pageDesc, model, tagLanguage, preferredTags, type, baseUrl, apiKey } = c.req.valid('json')
+    const { title, pageDesc, model, tagLanguage, preferredTags, type, baseUrl, apiKey, gatewayToken } = c.req.valid('json')
 
-    // OpenAI-compatible provider (OpenAI / DeepSeek / custom): run server-side to avoid browser CORS.
-    if (type === 'openai') {
+    // OpenAI-compatible provider (OpenAI / DeepSeek / AI Gateway / custom): run server-side to avoid browser CORS.
+    if (type === 'openai' || type === 'cloudflare-gateway') {
       try {
         const tags = await generateTagByOpenAI({
-          type: 'openai',
+          type,
           title,
           pageDesc,
           model,
@@ -167,6 +176,7 @@ app.post(
           preferredTags,
           baseUrl: baseUrl as string,
           apiKey: apiKey as string,
+          gatewayToken: gatewayToken as string,
         })
         return c.json(result.success(tags))
       }

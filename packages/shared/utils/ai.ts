@@ -59,6 +59,36 @@ function generateChatCompletion(tagLanguage: string, preferredTags: string[]): s
   `
 }
 
+// Auth headers for an OpenAI-compatible endpoint. `apiKey` is the upstream provider key;
+// `gatewayToken` targets Cloudflare AI Gateway (Authenticated Gateway) via `cf-aig-authorization`.
+// Either may be absent: with a key stored in the gateway (BYOK) only the token is needed.
+export function buildOpenAIAuthHeaders(props: { apiKey?: string, gatewayToken?: string }): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (props.apiKey)
+    headers.Authorization = `Bearer ${props.apiKey}`
+  if (props.gatewayToken)
+    headers['cf-aig-authorization'] = `Bearer ${props.gatewayToken}`
+  return headers
+}
+
+// Pull a human-readable message out of a failed response. Handles the OpenAI error shape
+// ({error:{message}}), the Cloudflare API/AI Gateway shape ({errors:[{message}]}), and
+// plain-text bodies (e.g. DeepSeek's bare "Authentication Fails" 401).
+export async function extractOpenAIErrorMessage(res: Response): Promise<string> {
+  const raw = await res.text().catch(() => '')
+  try {
+    const content = JSON.parse(raw) as { error?: { message?: string }, errors?: Array<{ message?: string }> }
+    const message = content?.error?.message ?? content?.errors?.[0]?.message
+    if (message)
+      return message
+  }
+  catch {
+    // not JSON — fall through to the raw text
+  }
+  const text = raw.trim()
+  return text ? text.slice(0, 300) : `Request failed with status ${res.status}`
+}
+
 // Normalize an OpenAI-compatible base URL into a full chat/completions endpoint.
 // Accepts either a base URL (https://api.deepseek.com, https://api.openai.com/v1)
 // or an already-complete endpoint (…/chat/completions, …/completions) for backward compatibility.
@@ -85,13 +115,10 @@ export function buildDescriptionMessage(props: { title: string, content: string,
   ]
 }
 
-export async function generateDescriptionByOpenAI(props: { model: string, baseUrl: string, apiKey: string, title: string, content: string, tagLanguage: string }): Promise<string> {
+export async function generateDescriptionByOpenAI(props: { model: string, baseUrl: string, apiKey?: string, gatewayToken?: string, title: string, content: string, tagLanguage: string }): Promise<string> {
   const res = await fetch(joinCompletionsUrl(props.baseUrl), {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${props.apiKey}`,
-    },
+    headers: buildOpenAIAuthHeaders(props),
     body: JSON.stringify({
       model: props.model,
       messages: buildDescriptionMessage(props),
@@ -99,8 +126,7 @@ export async function generateDescriptionByOpenAI(props: { model: string, baseUr
     }),
   })
   if (!res.ok) {
-    const content = await res.json().catch(() => null) as { error?: { message?: string } } | null
-    throw new Error(content?.error?.message ?? `Request failed with status ${res.status}`)
+    throw new Error(await extractOpenAIErrorMessage(res))
   }
   const data = await res.json() as { choices: [{ message: { content: string } }] }
   return (data.choices[0]?.message?.content ?? '').trim()
@@ -151,13 +177,10 @@ export function parseTagsWithIcon(raw: string): Array<{ name: string, icon: stri
     .map(t => ({ name: t.name!.trim(), icon: typeof t.icon === 'string' ? t.icon.trim().slice(0, 16) : '' }))
 }
 
-export async function generateTagsWithIconByOpenAI(props: { model: string, baseUrl: string, apiKey: string, title: string, content: string, tagLanguage: string, preferredTags: string[] }): Promise<Array<{ name: string, icon: string }>> {
+export async function generateTagsWithIconByOpenAI(props: { model: string, baseUrl: string, apiKey?: string, gatewayToken?: string, title: string, content: string, tagLanguage: string, preferredTags: string[] }): Promise<Array<{ name: string, icon: string }>> {
   const res = await fetch(joinCompletionsUrl(props.baseUrl), {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${props.apiKey}`,
-    },
+    headers: buildOpenAIAuthHeaders(props),
     body: JSON.stringify({
       model: props.model,
       messages: buildTagWithIconMessage(props),
@@ -167,8 +190,7 @@ export async function generateTagsWithIconByOpenAI(props: { model: string, baseU
     }),
   })
   if (!res.ok) {
-    const content = await res.json().catch(() => null) as { error?: { message?: string } } | null
-    throw new Error(content?.error?.message ?? `Request failed with status ${res.status}`)
+    throw new Error(await extractOpenAIErrorMessage(res))
   }
   const data = await res.json() as { choices: [{ message: { content: string } }] }
   return parseTagsWithIcon(data.choices[0]?.message?.content ?? '')
@@ -176,13 +198,10 @@ export async function generateTagsWithIconByOpenAI(props: { model: string, baseU
 
 // Lightweight connectivity check: send a trivial "你好" and confirm the endpoint
 // answers. Avoids the full tag-generation round-trip just to verify credentials.
-export async function testOpenAIConnection(props: { model: string, baseUrl: string, apiKey: string }): Promise<void> {
+export async function testOpenAIConnection(props: { model: string, baseUrl: string, apiKey?: string, gatewayToken?: string }): Promise<void> {
   const res = await fetch(joinCompletionsUrl(props.baseUrl), {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${props.apiKey}`,
-    },
+    headers: buildOpenAIAuthHeaders(props),
     body: JSON.stringify({
       model: props.model,
       messages: [{ role: 'user', content: '你好' }],
@@ -190,21 +209,17 @@ export async function testOpenAIConnection(props: { model: string, baseUrl: stri
     }),
   })
   if (!res.ok) {
-    const content = await res.json().catch(() => null) as { error?: { message?: string } } | null
-    throw new Error(content?.error?.message ?? `Request failed with status ${res.status}`)
+    throw new Error(await extractOpenAIErrorMessage(res))
   }
 }
 
 export async function generateTagByOpenAI(props: GenerateTagProps): Promise<Array<string>> {
-  if (props.type !== 'openai') {
+  if (props.type !== 'openai' && props.type !== 'cloudflare-gateway') {
     throw new Error('Invalid AI tag config')
   }
   const res = await fetch(joinCompletionsUrl(props.baseUrl), {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${props.apiKey}`,
-    },
+    headers: buildOpenAIAuthHeaders(props),
     body: JSON.stringify({
       messages: buildGenerateTagMessage(props),
       model: props.model,

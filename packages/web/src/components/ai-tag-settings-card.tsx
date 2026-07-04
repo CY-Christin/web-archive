@@ -98,18 +98,32 @@ function AITagSettingsCard() {
       baseUrl: z.string().url({ message: t('please-enter-a-valid-base-url') }),
       apiKey: z.string().min(1, { message: t('api-key-is-required') }),
     }),
+    z.object({
+      type: z.literal('cloudflare-gateway'),
+      enabled: z.boolean().optional(),
+      tagLanguage: z.enum(['en', 'zh']),
+      model: z.string().min(1, { message: t('model-name-is-required') }),
+      preferredTags: z.array(z.string()),
+      baseUrl: z.string().url({ message: t('please-enter-a-valid-base-url') }),
+      gatewayToken: z.string().min(1, { message: t('gateway-token-is-required') }),
+      // Optional: omit when the provider key is stored in the gateway (BYOK).
+      apiKey: z.string().optional(),
+    }),
   ])
 
   const form = useForm<z.infer<typeof formSchema>>({
+    // gatewayToken only exists on the cloudflare-gateway member, but the form keeps all
+    // fields registered across type switches, so seed it here too (hence the cast).
     defaultValues: {
       type: 'openai',
       enabled: true,
       tagLanguage: 'en',
       baseUrl: '',
       apiKey: '',
+      gatewayToken: '',
       model: '',
       preferredTags: [],
-    },
+    } as z.infer<typeof formSchema>,
     resolver: zodResolver(formSchema),
   })
 
@@ -192,9 +206,13 @@ function AITagSettingsCard() {
                         <SelectContent>
                           <SelectItem value="cloudflare">Cloudflare Workers AI</SelectItem>
                           <SelectItem value="openai">OpenAI</SelectItem>
+                          <SelectItem value="cloudflare-gateway">Cloudflare AI Gateway</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>
+                    {serviceType === 'cloudflare-gateway' && (
+                      <p className={helpTextClass}>{t('aiTag-gateway-desc')}</p>
+                    )}
                     {serviceType === 'cloudflare' && (
                       <p className={helpTextClass}>
                         {t('aiTag-cloudflare-desc')}
@@ -234,49 +252,52 @@ function AITagSettingsCard() {
               />
 
               {serviceType === 'openai' && (
-                <>
-                  <FormItem className="space-y-0 desk:col-span-2">
-                    <FormLabel className={labelClass}>{t('aiTag-provider-preset')}</FormLabel>
-                    <Select
-                      value={preset}
-                      onValueChange={(value: 'openai' | 'deepseek' | 'custom') => {
-                        setPreset(value)
-                        if (value !== 'custom') {
-                          form.setValue('baseUrl', OPENAI_PRESETS[value].baseUrl, { shouldValidate: true })
-                          form.setValue('model', OPENAI_PRESETS[value].model, { shouldValidate: true })
-                        }
-                      }}
-                    >
-                      <SelectTrigger className={selectTriggerClass}>
-                        <SelectValue placeholder={t('aiTag-provider-preset')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="openai">OpenAI</SelectItem>
-                        <SelectItem value="deepseek">DeepSeek</SelectItem>
-                        <SelectItem value="custom">{t('aiTag-provider-custom')}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className={helpTextClass}>{t('aiTag-provider-preset-desc')}</p>
-                  </FormItem>
-                  <FormField
-                    control={form.control}
-                    name="baseUrl"
-                    render={({ field }) => (
-                      <FormItem className="space-y-0">
-                        <FormLabel className={labelClass}>{t('base-url')}</FormLabel>
-                        <FormControl>
-                          <Input
-                            showRing={false}
-                            className={monoInputClass}
-                            placeholder="https://api.deepseek.com"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage className="mt-1.5 text-xs" />
-                      </FormItem>
-                    )}
-                  />
-                </>
+                <FormItem className="space-y-0 desk:col-span-2">
+                  <FormLabel className={labelClass}>{t('aiTag-provider-preset')}</FormLabel>
+                  <Select
+                    value={preset}
+                    onValueChange={(value: 'openai' | 'deepseek' | 'custom') => {
+                      setPreset(value)
+                      if (value !== 'custom') {
+                        form.setValue('baseUrl', OPENAI_PRESETS[value].baseUrl, { shouldValidate: true })
+                        form.setValue('model', OPENAI_PRESETS[value].model, { shouldValidate: true })
+                      }
+                    }}
+                  >
+                    <SelectTrigger className={selectTriggerClass}>
+                      <SelectValue placeholder={t('aiTag-provider-preset')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="openai">OpenAI</SelectItem>
+                      <SelectItem value="deepseek">DeepSeek</SelectItem>
+                      <SelectItem value="custom">{t('aiTag-provider-custom')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className={helpTextClass}>{t('aiTag-provider-preset-desc')}</p>
+                </FormItem>
+              )}
+
+              {(serviceType === 'openai' || serviceType === 'cloudflare-gateway') && (
+                <FormField
+                  control={form.control}
+                  name="baseUrl"
+                  render={({ field }) => (
+                    <FormItem className="space-y-0">
+                      <FormLabel className={labelClass}>{t('base-url')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          showRing={false}
+                          className={monoInputClass}
+                          placeholder={serviceType === 'cloudflare-gateway'
+                            ? 'https://gateway.ai.cloudflare.com/v1/<account-id>/<gateway>/compat'
+                            : 'https://api.deepseek.com'}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage className="mt-1.5 text-xs" />
+                    </FormItem>
+                  )}
+                />
               )}
 
               <FormField
@@ -291,7 +312,9 @@ function AITagSettingsCard() {
                         className={monoInputClass}
                         placeholder={serviceType === 'cloudflare'
                           ? '@cf/mistral/mistral-7b-instruct-v0.1/...'
-                          : 'deepseek-chat / gpt-4o-mini / ...'}
+                          : serviceType === 'cloudflare-gateway'
+                            ? 'deepseek/deepseek-chat (compat) / deepseek-chat'
+                            : 'deepseek-chat / gpt-4o-mini / ...'}
                         {...field}
                       />
                     </FormControl>
@@ -314,13 +337,38 @@ function AITagSettingsCard() {
                 )}
               />
 
-              {serviceType === 'openai' && (
+              {serviceType === 'cloudflare-gateway' && (
+                <FormField
+                  control={form.control}
+                  name="gatewayToken"
+                  render={({ field }) => (
+                    <FormItem className="space-y-0 desk:col-span-2">
+                      <FormLabel className={labelClass}>Gateway Token</FormLabel>
+                      <FormControl>
+                        <Input
+                          showRing={false}
+                          type="password"
+                          className={monoInputClass}
+                          placeholder="cf-aig-authorization"
+                          {...field}
+                        />
+                      </FormControl>
+                      <p className={helpTextClass}>{t('aiTag-gateway-token-desc')}</p>
+                      <FormMessage className="mt-1.5 text-xs" />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {(serviceType === 'openai' || serviceType === 'cloudflare-gateway') && (
                 <FormField
                   control={form.control}
                   name="apiKey"
                   render={({ field }) => (
                     <FormItem className="space-y-0 desk:col-span-2">
-                      <FormLabel className={labelClass}>API Key</FormLabel>
+                      <FormLabel className={labelClass}>
+                        {serviceType === 'cloudflare-gateway' ? `API Key (${t('optional')})` : 'API Key'}
+                      </FormLabel>
                       <FormControl>
                         <Input
                           showRing={false}
@@ -328,8 +376,12 @@ function AITagSettingsCard() {
                           className={monoInputClass}
                           placeholder="API Key"
                           {...field}
+                          value={field.value ?? ''}
                         />
                       </FormControl>
+                      {serviceType === 'cloudflare-gateway' && (
+                        <p className={helpTextClass}>{t('aiTag-gateway-apikey-desc')}</p>
+                      )}
                       <FormMessage className="mt-1.5 text-xs" />
                     </FormItem>
                   )}

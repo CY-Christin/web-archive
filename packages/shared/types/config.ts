@@ -3,7 +3,7 @@ enum ConfigKey {
   aiTag = 'config/ai_tag',
 }
 
-type AITagConfig = CloudFlareAITagConfig | OpenAIConfig
+type AITagConfig = CloudFlareAITagConfig | OpenAIConfig | CloudflareGatewayConfig
 
 interface BaseAITagConfig {
   // Master switch for AI auto description/tagging on upload.
@@ -26,4 +26,15 @@ interface OpenAIConfig extends BaseAITagConfig {
   baseUrl: string
 }
 
-export { ConfigKey, AITagConfig, OpenAIConfig, CloudFlareAITagConfig }
+interface CloudflareGatewayConfig extends BaseAITagConfig {
+  type: 'cloudflare-gateway'
+  // Gateway endpoint, e.g. https://gateway.ai.cloudflare.com/v1/<account-id>/<gateway>/compat
+  // or a provider path like .../<gateway>/deepseek; /chat/completions is appended (see joinCompletionsUrl).
+  baseUrl: string
+  // Authenticated Gateway token, sent as `cf-aig-authorization: Bearer <token>`.
+  gatewayToken: string
+  // Upstream provider key; optional because the key can be stored in the gateway (BYOK).
+  apiKey?: string
+}
+
+export { ConfigKey, AITagConfig, OpenAIConfig, CloudFlareAITagConfig, CloudflareGatewayConfig }

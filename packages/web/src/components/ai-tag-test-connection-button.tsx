@@ -21,6 +21,7 @@ async function generateTagByConfig(config: GenerateTagProps) {
     type: config.type,
     baseUrl: config.baseUrl,
     apiKey: config.apiKey,
+    gatewayToken: config.gatewayToken,
   })
 }
 

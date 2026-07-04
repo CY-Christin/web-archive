@@ -84,9 +84,26 @@ app.post(
       apiKey: z.string(apiKeyError).min(1, apiKeyError),
     })
 
+    const gatewayTokenError = {
+      message: 'Gateway Token is required',
+    }
+    // Cloudflare AI Gateway (Authenticated Gateway): OpenAI-compatible endpoint reached with a
+    // cf-aig-authorization token; the provider key is optional (may be stored in the gateway).
+    const cloudflareGatewaySchema = z.object({
+      type: z.literal('cloudflare-gateway'),
+      enabled: z.boolean().optional(),
+      tagLanguage: z.enum(['en', 'zh']).default('en'),
+      model: z.string(modelError).min(1, modelError),
+      preferredTags: z.array(z.string()).default([]),
+      baseUrl: z.string(baseUrlError).min(1, baseUrlError),
+      gatewayToken: z.string(gatewayTokenError).min(1, gatewayTokenError),
+      apiKey: z.string().optional(),
+    })
+
     const schema = z.discriminatedUnion('type', [
       cloudflareSchema,
       openaiSchema,
+      cloudflareGatewaySchema,
     ])
     const parsed = schema.safeParse(value)
     if (!parsed.success) {
