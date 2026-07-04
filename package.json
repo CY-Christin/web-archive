@@ -1,6 +1,6 @@
 {
   "name": "web-archive",
-  "version": "0.1.1-alpha.1",
+  "version": "0.2.0",
   "description": "Self-host your own web archive, powered by Cloudflare Workers and React.",
   "author": "Ray-D-Song & banzhe",
   "license": "ISC",
