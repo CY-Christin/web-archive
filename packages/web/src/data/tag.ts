@@ -27,9 +27,10 @@ function generateTag(body: {
   model: string
   preferredTags: string[]
   tagLanguage: string
-  type?: 'cloudflare' | 'openai'
+  type?: 'cloudflare' | 'openai' | 'cloudflare-gateway'
   baseUrl?: string
   apiKey?: string
+  gatewayToken?: string
 }): Promise<string[]> {
   return fetcher<string[]>('/tags/generate_tag', {
     method: 'POST',
@@ -39,9 +40,10 @@ function generateTag(body: {
 
 function testAIConnection(body: {
   model: string
-  type?: 'cloudflare' | 'openai'
+  type?: 'cloudflare' | 'openai' | 'cloudflare-gateway'
   baseUrl?: string
   apiKey?: string
+  gatewayToken?: string
 }): Promise<null> {
   return fetcher<null>('/tags/test_connection', {
     method: 'POST',
