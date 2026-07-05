@@ -52,7 +52,7 @@ interface SearchSnippet {
   after: string
 }
 
-interface SearchResultItem extends Pick<Page, 'id' | 'title' | 'pageUrl' | 'pageDesc' | 'screenshotId' | 'folderId' | 'createdAt' | 'linkStatus' | 'lastChecked'> {
+interface SearchResultItem extends Pick<Page, 'id' | 'title' | 'pageUrl' | 'pageDesc' | 'screenshotId' | 'folderId' | 'createdAt' | 'linkStatus' | 'linkStatusReason' | 'lastChecked'> {
   matchType: SearchMatchType
   // Names of all tags this page is bound to (not only the matched one).
   tags: string[]
@@ -85,6 +85,7 @@ interface RecheckPagesResult {
   statuses: Array<{
     id: number
     linkStatus: LinkStatus
+    linkStatusReason: Page['linkStatusReason']
     lastChecked: string
   }>
 }
@@ -97,6 +98,35 @@ function recheckPages(body: {
   limit?: number
 } = {}): Promise<RecheckPagesResult> {
   return fetcher<RecheckPagesResult>('/pages/recheck', {
+    method: 'POST',
+    body,
+  })
+}
+
+interface AiClassifyFolderResult {
+  classified: number
+  moved: number
+  createdFolders: number
+  cursor: number
+  done: boolean
+  results: Array<{
+    id: number
+    folderId: number
+    folderName: string
+    createdFolder: boolean
+  }>
+}
+
+// One bounded batch of AI folder classification over one folder's pages (each
+// page costs one AI call, hence the small limit). folderId is required: "AI 整理"
+// only organizes the selected folder. Loop passing the returned `cursor` back
+// until `done`.
+function aiClassifyFolderPages(body: {
+  folderId: number
+  cursor?: number
+  limit?: number
+}): Promise<AiClassifyFolderResult> {
+  return fetcher<AiClassifyFolderResult>('/pages/ai_classify_folder', {
     method: 'POST',
     body,
   })
@@ -140,6 +170,11 @@ function updatePage(body: {
   isShowcased: number
   pageDesc?: string
   pageUrl?: string
+  bindTags?: string[]
+  unbindTags?: string[]
+  // AI-generated tags staged in the edit dialog; bound with their emoji icon
+  // (existing tags keep their icon). Never overlaps with bindTags.
+  bindTagsWithIcon?: Array<{ name: string, icon: string }>
 }): Promise<Page> {
   return fetcher<Page>('/pages/update_page', {
     method: 'PUT',
@@ -211,7 +246,7 @@ function getPageVersions(pageId: number): Promise<PageVersion[]> {
   })
 }
 
-export type { PageVersion, SearchMatchType, SearchSnippet, SearchResultItem, RecheckPagesResult }
+export type { PageVersion, SearchMatchType, SearchSnippet, SearchResultItem, RecheckPagesResult, AiClassifyFolderResult }
 
 export {
   getPageDetail,
@@ -219,6 +254,7 @@ export {
   queryPage,
   searchPages,
   recheckPages,
+  aiClassifyFolderPages,
   getLinkCheckStatus,
   updatePage,
   queryDeletedPage,

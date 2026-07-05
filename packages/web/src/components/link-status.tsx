@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { cn } from '@web-archive/shared/utils'
-import type { LinkStatus } from '@web-archive/shared/types'
+import type { LinkStatus, Page } from '@web-archive/shared/types'
 
 export type { LinkStatus }
 
@@ -37,6 +37,21 @@ export const LINK_STATUS_META: Record<LinkStatus, LinkStatusMeta> = {
     pillFg: '#c07d17',
     labelKey: 'link-status-redirect',
   },
+  unknown: {
+    dot: 'var(--text-faint)',
+    pillBg: 'rgba(154,158,166,.16)',
+    pillFg: 'hsl(var(--muted-foreground))',
+    labelKey: 'link-status-unknown',
+  },
+}
+
+// Label key including the reason sub-classification: an 'unknown' probed as a
+// Cloudflare block gets its own variant ("未知 · CF 拦截"). Use this wherever a
+// status label is rendered next to a dot/pill.
+export function linkStatusLabelKey(status: LinkStatus, reason?: Page['linkStatusReason']) {
+  if (status === 'unknown' && reason === 'cf-blocked')
+    return 'link-status-unknown-cf'
+  return LINK_STATUS_META[status].labelKey
 }
 
 interface LinkStatusDotProps {
@@ -61,10 +76,12 @@ function LinkStatusDot({ status, size = 6, className }: LinkStatusDotProps) {
 
 interface LinkStatusPillProps {
   status?: LinkStatus | null
+  /** Sub-classification of 'unknown' (page.linkStatusReason); switches the label. */
+  reason?: Page['linkStatusReason']
   className?: string
 }
 
-function LinkStatusPill({ status, className }: LinkStatusPillProps) {
+function LinkStatusPill({ status, reason, className }: LinkStatusPillProps) {
   const { t } = useTranslation()
   if (!status)
     return null
@@ -74,7 +91,7 @@ function LinkStatusPill({ status, className }: LinkStatusPillProps) {
       className={cn('shrink-0 rounded-full px-[9px] py-[2px] font-mono text-[10.5px]', className)}
       style={{ background: meta.pillBg, color: meta.pillFg }}
     >
-      {t(meta.labelKey)}
+      {t(linkStatusLabelKey(status, reason))}
     </span>
   )
 }

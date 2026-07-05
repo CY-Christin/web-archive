@@ -7,7 +7,7 @@ import toast from 'react-hot-toast'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@web-archive/shared/utils'
 import ScreenshotView from './screenshot-view'
-import { LINK_STATUS_META, LinkStatusDot } from './link-status'
+import { LinkStatusDot, linkStatusLabelKey } from './link-status'
 import CardEditDialog from '~/components/card-edit-dialog'
 import { updatePageShowcase } from '~/data/page'
 import TagContext from '~/store/tag'
@@ -45,7 +45,7 @@ function Comp({ page, variant = 'archive', onDelete, onEdited }: PageCardProps) 
   const isShowcaseContext = location.pathname.startsWith('/showcase')
   const redirectTo = isShowcaseContext ? '/showcase/page/:slug' : '/page/:slug'
   const domain = getDomain(page.pageUrl)
-  const statusMeta = page.linkStatus ? LINK_STATUS_META[page.linkStatus] : null
+  const statusLabelKey = page.linkStatus ? linkStatusLabelKey(page.linkStatus, page.linkStatusReason) : null
 
   const handleOpenOriginal = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -116,10 +116,10 @@ function Comp({ page, variant = 'archive', onDelete, onEdited }: PageCardProps) 
             <span aria-hidden className="h-[7px] w-[7px] shrink-0 rounded-full bg-border-strong" />
             <span aria-hidden className="h-[7px] w-[7px] shrink-0 rounded-full bg-border-strong" />
             <span className="ml-2 min-w-0 truncate font-mono text-[10px] text-faint">{domain}</span>
-            {statusMeta && (
+            {statusLabelKey && (
               <span className="ml-auto flex shrink-0 items-center gap-1">
                 <LinkStatusDot status={page.linkStatus} size={6} />
-                <span className="font-mono text-[9.5px] text-faint">{t(statusMeta.labelKey)}</span>
+                <span className="font-mono text-[9.5px] text-faint">{t(statusLabelKey)}</span>
               </span>
             )}
           </div>

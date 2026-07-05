@@ -33,6 +33,7 @@
   "scraping-page-data": "Scraping Page Data...",
   "ai-tag-not-configured": "Please configure in website settings first",
   "select-folder-placeholder": "Select a folder",
+  "ai-auto-folder": "🤖 AI Auto",
   "folder-required": "Please select a folder",
   "no-folder-found": "No Folder Found.",
   "confirm": "Confirm",

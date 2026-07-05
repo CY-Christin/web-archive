@@ -4,18 +4,22 @@ import { Input } from '@web-archive/shared/components/input'
 import { Switch } from '@web-archive/shared/components/switch'
 import { useRequest } from 'ahooks'
 import { useForm } from 'react-hook-form'
-import { memo, useContext, useEffect } from 'react'
+import { memo, useContext, useEffect, useRef, useState } from 'react'
+import { Loader2, Sparkles } from 'lucide-react'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@web-archive/shared/components/form'
 import { z } from 'zod'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@web-archive/shared/components/select'
 import { Textarea } from '@web-archive/shared/components/textarea'
 import { Button } from '@web-archive/shared/components/button'
 import { toast } from 'react-hot-toast'
+import type { AutoCompleteTagInputRef } from '@web-archive/shared/components/auto-complete-tag-input'
 import AutoCompleteTagInput from '@web-archive/shared/components/auto-complete-tag-input'
 import { useTranslation } from 'react-i18next'
 import LoadingWrapper from '~/components/loading-wrapper'
 import { getPageDetail, updatePage } from '~/data/page'
 import { getAllFolder } from '~/data/folder'
+import { getAITagConfig } from '~/data/config'
+import { generateTag } from '~/data/tag'
 import TagContext from '~/store/tag'
 
 interface CardEditDialogProps {
@@ -56,12 +60,16 @@ function Comp({ open, onOpenChange, pageId }: CardEditDialogProps) {
     {
       manual: true,
       onSuccess: (data) => {
+        // reset replaces values wholesale: omitting the tag arrays would leave
+        // bindTags/unbindTags undefined and crash the submit handler.
         form.reset({
           title: data.title,
           pageDesc: data.pageDesc,
           pageUrl: data.pageUrl,
           isShowcased: data.isShowcased,
           folderId: data.folderId,
+          bindTags: [],
+          unbindTags: [],
         })
       },
     },
@@ -80,10 +88,51 @@ function Comp({ open, onOpenChange, pageId }: CardEditDialogProps) {
     form.setValue('unbindTags', unbindTags)
   }
 
+  // AI tag generation: results are staged into the tag input (the user can
+  // still remove them); only the ones still selected on save are bound, with
+  // their emoji icon, via bindTagsWithIcon.
+  const { data: aiConfig, run: getAIConfigRun } = useRequest(getAITagConfig, {
+    manual: true,
+  })
+  const aiAvailable = aiConfig != null && aiConfig.enabled !== false && aiConfig.model !== ''
+  const tagInputRef = useRef<AutoCompleteTagInputRef>(null)
+  const [aiTags, setAiTags] = useState<Array<{ name: string, icon: string }>>([])
+  const [generatingTags, setGeneratingTags] = useState(false)
+
+  const handleGenerateTags = async () => {
+    if (generatingTags)
+      return
+    if (!aiConfig || !aiAvailable) {
+      toast.error(t('ai-tag-not-configured'))
+      return
+    }
+    setGeneratingTags(true)
+    try {
+      const generated = await generateTag({
+        ...aiConfig,
+        withIcon: true,
+        title: form.getValues('title'),
+        pageDesc: form.getValues('pageDesc'),
+        // Same semantics as the plugin: existing tag names steer the model.
+        preferredTags: tagCache?.map(tag => tag.name) ?? [],
+      })
+      setAiTags(prev => [...prev, ...generated.filter(tag => !prev.some(item => item.name === tag.name))])
+      tagInputRef.current?.addTags(generated.map(tag => tag.name))
+    }
+    catch {
+      // fetcher already toasted the server error.
+    }
+    finally {
+      setGeneratingTags(false)
+    }
+  }
+
   useEffect(() => {
     if (open) {
       getPageDetailRun(pageId.toString())
       getAllFolderRun()
+      getAIConfigRun()
+      setAiTags([])
     }
   }, [open])
   const { run: updatePageRun } = useRequest(updatePage, {
@@ -108,11 +157,18 @@ function Comp({ open, onOpenChange, pageId }: CardEditDialogProps) {
           <Form {...form}>
             <form
               className="space-y-4"
-              onSubmit={form.handleSubmit(data => updatePageRun({
-                ...data,
-                isShowcased: Number(data.isShowcased),
-                id: pageId,
-              }))}
+              onSubmit={form.handleSubmit((data) => {
+                // AI-staged tags still selected go through bindTagsWithIcon
+                // (so their emoji is stored); they must not repeat in bindTags.
+                const aiSelected = aiTags.filter(tag => data.bindTags.includes(tag.name))
+                updatePageRun({
+                  ...data,
+                  bindTags: data.bindTags.filter(name => !aiSelected.some(tag => tag.name === name)),
+                  bindTagsWithIcon: aiSelected,
+                  isShowcased: Number(data.isShowcased),
+                  id: pageId,
+                })
+              })}
             >
               <FormField
                 control={form.control}
@@ -134,7 +190,7 @@ function Comp({ open, onOpenChange, pageId }: CardEditDialogProps) {
                   <FormItem>
                     <FormLabel>{t('description')}</FormLabel>
                     <FormControl>
-                      <Textarea placeholder={t('input-description-placeholder')} />
+                      <Textarea placeholder={t('input-description-placeholder')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -193,9 +249,26 @@ function Comp({ open, onOpenChange, pageId }: CardEditDialogProps) {
                 name="tags"
                 render={() => (
                   <FormItem>
-                    <FormLabel>{t('tags')}</FormLabel>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>{t('tags')}</FormLabel>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className={!aiAvailable ? 'opacity-60' : undefined}
+                        disabled={generatingTags}
+                        title={aiAvailable ? undefined : t('ai-tag-not-configured')}
+                        onClick={handleGenerateTags}
+                      >
+                        {generatingTags
+                          ? <Loader2 size={14} className="mr-1.5 animate-spin" />
+                          : <Sparkles size={14} className="mr-1.5" />}
+                        {t(generatingTags ? 'ai-generating-tags' : 'ai-generate-tags')}
+                      </Button>
+                    </div>
                     <FormControl>
                       <AutoCompleteTagInput
+                        ref={tagInputRef}
                         tags={tagCache ?? []}
                         selectTags={selectTags ?? []}
                         onChange={handleTagChange}

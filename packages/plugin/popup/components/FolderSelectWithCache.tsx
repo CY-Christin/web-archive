@@ -4,6 +4,7 @@ import { isNotNil } from '@web-archive/shared/utils'
 import { sendMessage } from 'webext-bridge/popup'
 import { useRequest } from 'ahooks'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import FolderCombobox from './FolderCombobox'
 import NewFolderDialog from './NewFolderDialog'
 
@@ -18,11 +19,26 @@ async function getAllFolders() {
   return folders
 }
 
+// Pseudo folder option: let AI pick (or create) the folder on the server side.
+export const AI_AUTO_FOLDER_ID = 'ai-auto'
+
 export function getLastChooseFolderId() {
   return localStorage.getItem('lastChooseFolderId') || undefined
 }
 
+// Real folder to land in when AI-auto is selected (pages.folderId is NOT NULL,
+// and it's the final spot when AI is unconfigured or classification fails).
+export function getAiAutoFallbackFolderId() {
+  const cache = localStorage.getItem('folderList')
+  const folderList: Array<{ id: number, name: string }> = cache ? JSON.parse(cache) : []
+  const lastRealFolderId = localStorage.getItem('lastRealChooseFolderId')
+  if (lastRealFolderId && folderList.some(folder => folder.id.toString() === lastRealFolderId))
+    return lastRealFolderId
+  return folderList[0]?.id.toString()
+}
+
 function FolderSelectWithCache({ value, onValueChange }: FolderSelectWithCacheProps) {
+  const { t } = useTranslation()
   const lastChooseFolderId = getLastChooseFolderId()
   const { data: folderList, refresh: refreshFolderList, mutate: setFolderList } = useRequest(getAllFolders, {
     cacheKey: 'folderList',
@@ -34,7 +50,7 @@ function FolderSelectWithCache({ value, onValueChange }: FolderSelectWithCachePr
       return cache ? JSON.parse(cache) : []
     },
     onSuccess: (data) => {
-      if (isNotNil(value) && !data.some(folder => folder.id.toString() === value)) {
+      if (isNotNil(value) && value !== AI_AUTO_FOLDER_ID && !data.some(folder => folder.id.toString() === value)) {
         onValueChange(undefined)
         lastChooseFolderId && localStorage.removeItem('lastChooseFolderId')
       }
@@ -49,11 +65,14 @@ function FolderSelectWithCache({ value, onValueChange }: FolderSelectWithCachePr
     ])
     onValueChange(folder.id.toString())
     localStorage.setItem('lastChooseFolderId', folder.id.toString())
+    localStorage.setItem('lastRealChooseFolderId', folder.id.toString())
     refreshFolderList()
   }
 
   function handleFolderSelect(newFolder: string) {
     localStorage.setItem('lastChooseFolderId', newFolder)
+    if (newFolder && newFolder !== AI_AUTO_FOLDER_ID)
+      localStorage.setItem('lastRealChooseFolderId', newFolder)
     onValueChange(newFolder)
   }
 
@@ -74,10 +93,13 @@ function FolderSelectWithCache({ value, onValueChange }: FolderSelectWithCachePr
         <FolderCombobox
           value={value}
           onValueChange={handleFolderSelect}
-          options={(folderList ?? []).map(folder => ({
-            value: folder.id.toString(),
-            label: folder.name,
-          }))}
+          options={[
+            { value: AI_AUTO_FOLDER_ID, label: t('ai-auto-folder') },
+            ...(folderList ?? []).map(folder => ({
+              value: folder.id.toString(),
+              label: folder.name,
+            })),
+          ]}
         >
         </FolderCombobox>
       </div>

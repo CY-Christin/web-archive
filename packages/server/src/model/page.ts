@@ -107,6 +107,7 @@ async function queryPage(DB: D1Database, options: PageQueryFilters & { pageNumbe
       p.updatedAt,
       p.isShowcased,
       p.linkStatus,
+      p.linkStatusReason,
       p.lastChecked
   `
   const { sql: baseSql, bindParams, useFts } = buildPageQuery(options, selectClause)
@@ -182,21 +183,42 @@ async function queryPagesForRecheck(DB: D1Database, options: { cursor: number, l
 
 // Persist probe results, then read the rows back so the response carries the
 // exact lastChecked value D1 stored (CURRENT_TIMESTAMP is computed in SQL).
-async function updatePagesLinkStatus(DB: D1Database, updates: Array<{ id: number, linkStatus: LinkStatus }>) {
+async function updatePagesLinkStatus(DB: D1Database, updates: Array<{ id: number, linkStatus: LinkStatus, linkStatusReason: Page['linkStatusReason'] }>) {
   if (updates.length === 0)
     return []
-  const stmt = DB.prepare(`UPDATE pages SET linkStatus = ?, lastChecked = CURRENT_TIMESTAMP WHERE id = ?`)
-  await DB.batch(updates.map(update => stmt.bind(update.linkStatus, update.id)))
+  const stmt = DB.prepare(`UPDATE pages SET linkStatus = ?, linkStatusReason = ?, lastChecked = CURRENT_TIMESTAMP WHERE id = ?`)
+  await DB.batch(updates.map(update => stmt.bind(update.linkStatus, update.linkStatusReason, update.id)))
 
   const idsJson = JSON.stringify(updates.map(update => update.id))
   const rows = await DB
-    .prepare(`SELECT id, linkStatus, lastChecked FROM pages WHERE id IN (SELECT value FROM json_each(?))`)
+    .prepare(`SELECT id, linkStatus, linkStatusReason, lastChecked FROM pages WHERE id IN (SELECT value FROM json_each(?))`)
     .bind(idsJson)
-    .all<Pick<Page, 'id' | 'linkStatus' | 'lastChecked'>>()
+    .all<Pick<Page, 'id' | 'linkStatus' | 'linkStatusReason' | 'lastChecked'>>()
   if (rows.error) {
     throw rows.error
   }
   return rows.results
+}
+
+// Pages of one folder to run AI folder classification over, walked by ascending
+// id cursor (same bounded-batch protocol as recheck; each page costs one AI
+// call, so batches stay small). Scoped to a folder on purpose: the user runs
+// "AI 整理" on a selected (e.g. uncategorized) folder, already-sorted folders
+// must not be touched.
+async function queryPagesForClassify(DB: D1Database, options: { folderId: number, cursor: number, limit: number }) {
+  const { folderId, cursor, limit } = options
+  const sql = `SELECT id, title, pageDesc, folderId FROM pages WHERE isDeleted = 0 AND folderId = ? AND id > ? ORDER BY id ASC LIMIT ?`
+  const result = await DB.prepare(sql).bind(folderId, cursor, limit).all<Pick<Page, 'id' | 'title' | 'pageDesc' | 'folderId'>>()
+  if (result.error) {
+    throw result.error
+  }
+  return result.results
+}
+
+// Move a page to another folder (used by AI folder classification).
+async function updatePageFolderId(DB: D1Database, pageId: number, folderId: number) {
+  const result = await DB.prepare(`UPDATE pages SET folderId = ? WHERE id = ?`).bind(folderId, pageId).run()
+  return result.success
 }
 
 // Most recent probe time across the archive (null = never checked anything).
@@ -259,14 +281,14 @@ async function filterLivePageIds(DB: D1Database, pageIds: number[]) {
 }
 
 // Page columns for a search-result window (no contentUrl; results link to /page/:id).
-type SearchResultPageRow = Pick<Page, 'id' | 'title' | 'pageUrl' | 'pageDesc' | 'screenshotId' | 'folderId' | 'createdAt' | 'linkStatus' | 'lastChecked'>
+type SearchResultPageRow = Pick<Page, 'id' | 'title' | 'pageUrl' | 'pageDesc' | 'screenshotId' | 'folderId' | 'createdAt' | 'linkStatus' | 'linkStatusReason' | 'lastChecked'>
 
 async function getSearchPagesByIds(DB: D1Database, pageIds: number[]) {
   if (pageIds.length === 0)
     return []
   const result = await DB
     .prepare(`
-      SELECT id, title, pageUrl, pageDesc, screenshotId, folderId, createdAt, linkStatus, lastChecked
+      SELECT id, title, pageUrl, pageDesc, screenshotId, folderId, createdAt, linkStatus, linkStatusReason, lastChecked
       FROM pages
       WHERE isDeleted = 0 AND id IN (SELECT value FROM json_each(?))
     `)
@@ -564,6 +586,8 @@ export {
   deletePageFtsByIds,
   queryPagesForReindex,
   queryPagesForRecheck,
+  queryPagesForClassify,
+  updatePageFolderId,
   updatePagesLinkStatus,
   getMaxLastChecked,
   searchPageIdsByKeyword,

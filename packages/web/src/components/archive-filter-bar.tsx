@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { useRequest } from 'ahooks'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronDown, Loader2, RotateCcw, X } from 'lucide-react'
+import { Check, ChevronDown, Loader2, RotateCcw, Sparkles, X } from 'lucide-react'
 import type { LinkStatus, Tag } from '@web-archive/shared/types'
 import { cn } from '@web-archive/shared/utils'
 import {
@@ -16,7 +16,7 @@ import { getAllFolder } from '~/data/folder'
 import emitter from '~/utils/emitter'
 import { tagLabel } from '~/utils/tag'
 
-const LINK_STATUS_OPTIONS: LinkStatus[] = ['live', 'dead', 'redirect']
+const LINK_STATUS_OPTIONS: LinkStatus[] = ['live', 'dead', 'redirect', 'unknown']
 
 // UTC 'YYYY-MM-DD HH:MM:SS' → local 'YYYY-MM-DD HH:mm'.
 function formatLocalDateTime(value: string) {
@@ -63,6 +63,9 @@ interface ArchiveFilterBarProps {
   lastChecked: string | null
   checking: boolean
   onRecheck: () => void
+  /** Batch AI folder classification loop (AI 整理) is running. Only enabled while a folder is selected. */
+  organizing: boolean
+  onAiClassify: () => void
 }
 
 function ArchiveFilterBar({
@@ -78,6 +81,8 @@ function ArchiveFilterBar({
   lastChecked,
   checking,
   onRecheck,
+  organizing,
+  onAiClassify,
 }: ArchiveFilterBarProps) {
   const { t } = useTranslation()
 
@@ -190,8 +195,25 @@ function ArchiveFilterBar({
         </button>
       )}
 
-      {/* Right cluster: last checked + recheck */}
+      {/* Right cluster: AI organize + last checked + recheck. AI organize only acts
+          on the selected folder (already-sorted folders stay untouched), so it is
+          disabled until a folder filter is active. */}
       <div className="ml-auto flex items-center gap-3">
+        <button
+          type="button"
+          disabled={organizing || folderId == null}
+          title={folderId == null ? t('ai-organize-select-folder') : undefined}
+          className={cn(
+            'flex shrink-0 items-center gap-[7px] rounded-btn border border-border-strong bg-surface px-[13px] py-[7px] text-[12.5px] font-semibold',
+            organizing || folderId == null ? 'cursor-default text-faint' : 'text-foreground hover:border-primary hover:text-primary',
+          )}
+          onClick={onAiClassify}
+        >
+          {organizing
+            ? <Loader2 size={15} strokeWidth={2} className="animate-spin-fast" />
+            : <Sparkles size={15} strokeWidth={2} />}
+          {t(organizing ? 'ai-organizing' : 'ai-organize')}
+        </button>
         {lastChecked && (
           <span className="font-mono text-[11.5px] text-faint">
             {`${t('last-checked')} ${formatLocalDateTime(lastChecked)}`}

@@ -1,6 +1,8 @@
 import { useContext, useMemo, useRef, useState } from 'react'
 import { useInfiniteScroll, useMemoizedFn, useRequest } from 'ahooks'
 import { useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import toast from 'react-hot-toast'
 import type { LinkStatus, Page } from '@web-archive/shared/types'
 import { Skeleton } from '@web-archive/shared/components/skeleton'
 import type React from 'react'
@@ -10,7 +12,7 @@ import ArchiveFilterBar from './archive-filter-bar'
 import EmptyWrapper from './empty-wrapper'
 import LoadingMore from './loading-more'
 import type { RecheckPagesResult } from '~/data/page'
-import { deletePage, getLinkCheckStatus, getPageDetail, queryPage, recheckPages } from '~/data/page'
+import { aiClassifyFolderPages, deletePage, getLinkCheckStatus, getPageDetail, queryPage, recheckPages } from '~/data/page'
 import AppContext from '~/store/app'
 import TagContext from '~/store/tag'
 import { useNavigate } from '~/router'
@@ -61,6 +63,7 @@ function ListSkeleton() {
 // Rendered by /archive (all pages, ?folder= filterable) and /folder/:slug
 // (folderId prop pins the folder); ?tag= filters by tag on both.
 function ArchiveView({ folderId }: { folderId?: number }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { view } = useContext(AppContext)
   const { tagCache } = useContext(TagContext)
@@ -198,7 +201,7 @@ function ArchiveView({ folderId }: { folderId?: number }) {
         ...old,
         list: old.list.map((page) => {
           const status = byId.get(page.id)
-          return status ? { ...page, linkStatus: status.linkStatus, lastChecked: status.lastChecked } : page
+          return status ? { ...page, linkStatus: status.linkStatus, linkStatusReason: status.linkStatusReason, lastChecked: status.lastChecked } : page
         }),
       }
     })
@@ -228,6 +231,50 @@ function ArchiveView({ folderId }: { folderId?: number }) {
     }
   })
 
+  // Batch AI folder classification (AI 整理) over the selected folder only —
+  // already-sorted folders stay untouched, so the button needs an active folder
+  // filter. Loop cursor batches until done, same protocol as /pages/recheck.
+  // limit 3 = one AI call per page, keep it small.
+  const [organizing, setOrganizing] = useState(false)
+  const organizingRef = useRef(false)
+
+  const handleAiClassify = useMemoizedFn(async () => {
+    if (organizingRef.current || effectiveFolderId == null)
+      return
+    organizingRef.current = true
+    setOrganizing(true)
+    const totals = { classified: 0, moved: 0, createdFolders: 0 }
+    try {
+      let cursor = 0
+      while (true) {
+        const res = await aiClassifyFolderPages({ folderId: effectiveFolderId, cursor, limit: 3 })
+        totals.classified += res.classified
+        totals.moved += res.moved
+        totals.createdFolders += res.createdFolders
+        if (res.done)
+          break
+        cursor = res.cursor
+        toast.loading(t('ai-organize-progress', { classified: totals.classified, moved: totals.moved }), { id: 'ai-organize' })
+      }
+      toast.success(
+        t('ai-organize-done', { classified: totals.classified, moved: totals.moved, created: totals.createdFolders }),
+        { id: 'ai-organize' },
+      )
+    }
+    catch {
+      // fetcher already toasted the server message (e.g. AI not configured); just stop.
+      toast.dismiss('ai-organize')
+    }
+    finally {
+      organizingRef.current = false
+      setOrganizing(false)
+      // Earlier batches may have moved pages / created folders even when a
+      // later one failed: refresh both surfaces unconditionally.
+      reload()
+      emitter.emit('refreshSideBar')
+    }
+  })
+
   const initialLoading = pagesLoading || !pagesData
 
   return (
@@ -245,6 +292,8 @@ function ArchiveView({ folderId }: { folderId?: number }) {
         lastChecked={linkCheck?.lastChecked ?? null}
         checking={checking}
         onRecheck={handleRecheck}
+        organizing={organizing}
+        onAiClassify={handleAiClassify}
       />
 
       {initialLoading

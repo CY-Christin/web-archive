@@ -77,6 +77,7 @@ type CreateTaskOptions = {
     title: string
     pageDesc: string
     folderId: string
+    aiClassifyFolder?: boolean
     screenshot?: string
     bindTags: string[]
     isShowcased: boolean
@@ -243,13 +244,16 @@ async function scrapePageData(singleFileSetting: SingleFileSetting, tabId: numbe
 }
 
 async function uploadPageData(pageForm: CreateTaskOptions['pageForm'] & { content: string }) {
-  const { href, title, pageDesc, folderId, screenshot, content, isShowcased, saveMode, targetPageId } = pageForm
+  const { href, title, pageDesc, folderId, aiClassifyFolder, screenshot, content, isShowcased, saveMode, targetPageId } = pageForm
 
   const form = new FormData()
   form.append('title', title)
   form.append('pageUrl', href)
   form.append('pageDesc', pageDesc)
   form.append('folderId', folderId)
+  if (aiClassifyFolder) {
+    form.append('aiClassifyFolder', '1')
+  }
   form.append('bindTags', JSON.stringify(pageForm.bindTags))
   form.append('pageFile', new Blob([content], { type: 'text/html' }))
   form.append('isShowcased', isShowcased ? '1' : '0')

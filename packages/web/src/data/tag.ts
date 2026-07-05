@@ -21,7 +21,7 @@ function updateTag(body: { id: number, name?: string, color?: string, icon?: str
   })
 }
 
-function generateTag(body: {
+type GenerateTagBody = {
   title: string
   pageDesc: string
   model: string
@@ -31,8 +31,14 @@ function generateTag(body: {
   baseUrl?: string
   apiKey?: string
   gatewayToken?: string
-}): Promise<string[]> {
-  return fetcher<string[]>('/tags/generate_tag', {
+}
+
+// withIcon=true routes through the emoji pipeline and returns {name, icon}[]
+// (same shape autoEnrichPage stores); without it the plugin-era string[] stays.
+function generateTag(body: GenerateTagBody & { withIcon: true }): Promise<Array<{ name: string, icon: string }>>
+function generateTag(body: GenerateTagBody & { withIcon?: false }): Promise<string[]>
+function generateTag(body: GenerateTagBody & { withIcon?: boolean }): Promise<string[] | Array<{ name: string, icon: string }>> {
+  return fetcher<string[] | Array<{ name: string, icon: string }>>('/tags/generate_tag', {
     method: 'POST',
     body,
   })

@@ -1,5 +1,6 @@
 // Result of the manual link-health probe (POST /api/pages/recheck).
-type LinkStatus = 'live' | 'dead' | 'redirect'
+// 'unknown' = the probe couldn't reach a conclusion (blocked, timeout, transient error).
+type LinkStatus = 'live' | 'dead' | 'redirect' | 'unknown'
 
 type Page = {
   id: number
@@ -18,6 +19,9 @@ type Page = {
   linkStatus: LinkStatus | null
   // D1 DATETIME string 'YYYY-MM-DD HH:MM:SS' (UTC), null until first probed.
   lastChecked: string | null
+  // Sub-classification of an 'unknown' linkStatus: 'cf-blocked' = the probe hit a
+  // Cloudflare challenge/block page. Null for every other status or reason.
+  linkStatusReason: 'cf-blocked' | null
 }
 
 type Folder = {

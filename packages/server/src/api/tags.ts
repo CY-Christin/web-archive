@@ -1,4 +1,4 @@
-import { buildGenerateTagMessage, generateTagByOpenAI, isNil, isNumberString, testOpenAIConnection } from '@web-archive/shared/utils'
+import { buildGenerateTagMessage, buildTagWithIconMessage, generateTagByOpenAI, generateTagsWithIconByOpenAI, isNil, isNumberString, parseTagsWithIcon, testOpenAIConnection } from '@web-archive/shared/utils'
 import { Hono } from 'hono'
 import { validator } from 'hono/validator'
 import { z } from 'zod'
@@ -138,6 +138,9 @@ app.post(
       model: z.string({ message: 'Model name is required' }).min(1, { message: 'Model name is required' }),
       tagLanguage: z.enum(['en', 'zh'], { message: 'Invalid tag language' }),
       preferredTags: z.array(z.string()).default([]),
+      // true -> tags come back as {name, icon}[] via the emoji pipeline (same as the
+      // post-upload auto-tagging); omitted/false keeps the legacy string[] shape for the plugin.
+      withIcon: z.boolean().default(false),
       // When type is 'openai' or 'cloudflare-gateway' the generation runs server-side against an
       // OpenAI-compatible endpoint (avoids browser CORS + keeps the key off the client).
       // Omitted/cloudflare uses Workers AI.
@@ -162,7 +165,40 @@ app.post(
     return parsed.data
   }),
   async (c) => {
-    const { title, pageDesc, model, tagLanguage, preferredTags, type, baseUrl, apiKey, gatewayToken } = c.req.valid('json')
+    const { title, pageDesc, model, tagLanguage, preferredTags, type, baseUrl, apiKey, gatewayToken, withIcon } = c.req.valid('json')
+
+    // withIcon: same emoji pipeline as the post-upload auto-tagging, so tags
+    // generated from the edit dialog carry an icon too. Returns {name, icon}[].
+    if (withIcon) {
+      try {
+        let tags: Array<{ name: string, icon: string }> = []
+        if (type === 'openai' || type === 'cloudflare-gateway') {
+          tags = await generateTagsWithIconByOpenAI({
+            model,
+            baseUrl: baseUrl as string,
+            apiKey,
+            gatewayToken,
+            title,
+            content: pageDesc,
+            tagLanguage,
+            preferredTags,
+          })
+        }
+        else {
+          const res = await c.env.AI.run(model, {
+            messages: buildTagWithIconMessage({ title, content: pageDesc, tagLanguage, preferredTags }),
+          })
+          tags = typeof res?.response === 'string' ? parseTagsWithIcon(res.response) : []
+        }
+        return c.json(result.success(tags))
+      }
+      catch (error) {
+        if (error instanceof Error) {
+          return c.json(result.error(500, error.message))
+        }
+        return c.json(result.error(500, 'Failed to generate tags'))
+      }
+    }
 
     // OpenAI-compatible provider (OpenAI / DeepSeek / AI Gateway / custom): run server-side to avoid browser CORS.
     if (type === 'openai' || type === 'cloudflare-gateway') {

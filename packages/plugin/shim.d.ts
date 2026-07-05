@@ -18,6 +18,7 @@ declare module 'webext-bridge' {
         pageDesc: string
         href: string
         folderId: string
+        aiClassifyFolder?: boolean
         screenshot?: string
         bindTags: string[]
         isShowcased: boolean

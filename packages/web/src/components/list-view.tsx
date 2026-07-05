@@ -69,7 +69,7 @@ function ListView({ pages, onItemClick, onDelete }: ListViewProps) {
               </div>
             )}
 
-            <LinkStatusPill status={page.linkStatus} />
+            <LinkStatusPill status={page.linkStatus} reason={page.linkStatusReason} />
 
             <span className="w-[92px] shrink-0 text-right font-mono text-[11.5px] text-faint">
               {formatLocalDate(page.createdAt)}

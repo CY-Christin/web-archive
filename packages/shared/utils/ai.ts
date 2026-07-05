@@ -206,6 +206,79 @@ export async function generateTagsWithIconByOpenAI(props: { model: string, baseU
   return parseTagsWithIcon(data.choices[0]?.message?.content ?? '')
 }
 
+// Build the chat messages for classifying a page into a folder. The prompt strongly
+// prefers reusing an existing folder, only proposes a new one when clearly none fits,
+// and may answer {"folder": null} when there is no confident destination at all
+// (callers leave the page where it is).
+export function buildClassifyFolderMessage(props: { title: string, pageDesc: string, folderNames: string[], tagLanguage: string }) {
+  const lang = props.tagLanguage === 'zh' ? 'Chinese' : 'English'
+  const folders = props.folderNames.length > 0 ? props.folderNames.join(', ') : '(none yet)'
+  return [
+    {
+      role: 'system' as const,
+      content: `Pick the best folder for the web page. Rules:
+1. Strongly prefer one of these EXISTING folders when any of them fits: [${folders}].
+2. Only propose a new folder when clearly none of the existing ones fits. A new folder name must be in ${lang}, concise, and generic enough to hold similar pages.
+3. Set "isNew" to true only when proposing a new folder; otherwise reuse the existing folder name verbatim.
+4. If you cannot pick a fitting existing folder and a new folder is not clearly warranted, answer {"folder": null, "isNew": false}.
+5. Return ONLY compact JSON: {"folder": "name", "isNew": false}. No other text.`,
+    },
+    {
+      role: 'user' as const,
+      content: JSON.stringify({ title: props.title, pageDesc: props.pageDesc.slice(0, 6000) }),
+    },
+  ]
+}
+
+// Parse the {"folder","isNew"} payload defensively (models wrap output in code fences
+// or stray text — never throw, just yield null so callers leave the page where it is).
+// folder: null in the result is a valid answer meaning "no fitting destination".
+export function parseClassifyFolderResponse(raw: string): { folder: string | null, isNew: boolean } | null {
+  const start = raw.indexOf('{')
+  const end = raw.lastIndexOf('}')
+  if (start === -1 || end <= start)
+    return null
+  let parsed: { folder?: string | null, isNew?: boolean }
+  try {
+    parsed = JSON.parse(raw.slice(start, end + 1))
+  }
+  catch {
+    return null
+  }
+  if (parsed?.folder === null)
+    return { folder: null, isNew: false }
+  if (typeof parsed?.folder !== 'string' || !parsed.folder.trim())
+    return null
+  return { folder: parsed.folder.trim(), isNew: parsed.isNew === true }
+}
+
+export async function classifyFolderByOpenAI(props: { type: AITagConfig['type'], model: string, baseUrl: string, apiKey?: string, gatewayToken?: string, title: string, pageDesc: string, folderNames: string[], tagLanguage: string }): Promise<{ folder: string | null, isNew: boolean }> {
+  if (props.type !== 'openai' && props.type !== 'cloudflare-gateway') {
+    throw new Error('Invalid AI tag config')
+  }
+  const res = await fetch(joinCompletionsUrl(props.baseUrl), {
+    method: 'POST',
+    headers: buildOpenAIAuthHeaders(props),
+    body: JSON.stringify({
+      model: props.model,
+      messages: buildClassifyFolderMessage(props),
+      max_tokens: 200,
+      // Force complete, valid JSON (avoids truncated/preamble output that fails to parse).
+      response_format: { type: 'json_object' },
+      ...buildModelExtraParams(props.model),
+    }),
+  })
+  if (!res.ok) {
+    throw new Error(await extractOpenAIErrorMessage(res))
+  }
+  const data = await res.json() as { choices: [{ message: { content: string } }] }
+  const parsed = parseClassifyFolderResponse(data.choices[0]?.message?.content ?? '')
+  if (!parsed) {
+    throw new Error('Failed to parse folder classification response')
+  }
+  return parsed
+}
+
 // Lightweight connectivity check: send a trivial "你好" and confirm the endpoint
 // answers. Avoids the full tag-generation round-trip just to verify credentials.
 export async function testOpenAIConnection(props: { model: string, baseUrl: string, apiKey?: string, gatewayToken?: string }): Promise<void> {

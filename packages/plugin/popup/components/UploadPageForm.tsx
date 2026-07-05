@@ -12,7 +12,7 @@ import toast from 'react-hot-toast'
 import { Switch } from '@web-archive/shared/components/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@web-archive/shared/components/select'
 import { useTranslation } from 'react-i18next'
-import FolderSelectWithCache, { getLastChooseFolderId } from './FolderSelectWithCache'
+import FolderSelectWithCache, { AI_AUTO_FOLDER_ID, getAiAutoFallbackFolderId, getLastChooseFolderId } from './FolderSelectWithCache'
 import TagInputWithCache from './TagInputWithCache'
 import { getSingleFileSetting } from '~/popup/utils/singleFile'
 import { takeScreenshot } from '~/popup/utils/screenshot'
@@ -123,6 +123,14 @@ function UploadPageForm({ setActivePage }: UploadPageFormProps) {
       toast.error(t('folder-required'))
       return
     }
+    // AI-auto is a pseudo option: still send a real fallback folder (the last
+    // real choice, or the first folder) and let the server reclassify it.
+    const aiClassifyFolder = uploadPageData.folderId === AI_AUTO_FOLDER_ID
+    const folderId = aiClassifyFolder ? getAiAutoFallbackFolderId() : uploadPageData.folderId
+    if (isNil(folderId)) {
+      toast.error(t('folder-required'))
+      return
+    }
     const tab = await getCurrentTab()
     if (isNil(tab.id)) {
       toast.error(t('get-current-tab-info-failed'))
@@ -135,7 +143,8 @@ function UploadPageForm({ setActivePage }: UploadPageFormProps) {
         title: uploadPageData.title,
         pageDesc: uploadPageData.pageDesc,
         href: uploadPageData.href,
-        folderId: uploadPageData.folderId,
+        folderId,
+        aiClassifyFolder,
         screenshot: uploadPageData.screenshot,
         bindTags: uploadPageData.bindTags,
         isShowcased: uploadPageData.isShowcased,

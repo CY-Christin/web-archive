@@ -33,6 +33,7 @@
   "scraping-page-data": "正在抓取页面数据...",
   "ai-tag-not-configured": "请现在网站中配置相关设置",
   "select-folder-placeholder": "选择一个文件夹",
+  "ai-auto-folder": "🤖 AI 自动",
   "folder-required": "请选择一个文件夹",
   "no-folder-found": "未找到文件夹",
   "confirm": "确认",
