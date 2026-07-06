@@ -15,7 +15,6 @@ interface FolderSelectWithCacheProps {
 
 async function getAllFolders() {
   const { folders } = await sendMessage('get-all-folders', {})
-  await new Promise(resolve => setTimeout(resolve, 2000))
   return folders
 }
 
@@ -29,8 +28,11 @@ export function getLastChooseFolderId() {
 // Real folder to land in when AI-auto is selected (pages.folderId is NOT NULL,
 // and it's the final spot when AI is unconfigured or classification fails).
 export function getAiAutoFallbackFolderId() {
+  // ahooks setCache persists a CachedData wrapper {data, params, time},
+  // so the folder array lives under .data (tolerate a bare array just in case).
   const cache = localStorage.getItem('folderList')
-  const folderList: Array<{ id: number, name: string }> = cache ? JSON.parse(cache) : []
+  const parsed = cache ? JSON.parse(cache) : null
+  const folderList: Array<{ id: number, name: string }> = Array.isArray(parsed) ? parsed : parsed?.data ?? []
   const lastRealFolderId = localStorage.getItem('lastRealChooseFolderId')
   if (lastRealFolderId && folderList.some(folder => folder.id.toString() === lastRealFolderId))
     return lastRealFolderId
